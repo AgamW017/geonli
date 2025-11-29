@@ -99,7 +99,7 @@ const LeftSidebar = forwardRef(({ isOpen, onToggleSidebar, onNewChat, onLoadSess
       className={`flex flex-col h-full bg-light-panel dark:bg-dark-panel border-r border-light-border dark:border-dark-border transition-all duration-300 ease-in-out overflow-x-hidden
         ${isOpen ? 'w-72' : 'w-20'}`}
     >
-      <div className="h-16 flex items-center px-4 border-b border-light-border dark:border-dark-border flex-shrink-0">
+      <div className="h-12 flex items-center px-4 border-b border-light-border dark:border-dark-border flex-shrink-0">
         <button 
           onClick={onToggleSidebar} 
           title="Toggle sidebar" 

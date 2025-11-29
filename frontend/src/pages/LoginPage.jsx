@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 
-export default function LoginPage({ onNavigate }) {
+export default function LoginPage({ onNavigate, onBack }) {
   const [isSignup, setIsSignup] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const { login, signup, loginWithGoogle } = useAuth();
-  const { isDark } = useTheme();
+  const { theme, toggleTheme } = useTheme();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -42,15 +42,38 @@ export default function LoginPage({ onNavigate }) {
   };
 
   return (
-    <div className={`min-h-screen flex items-center justify-center ${
-      isDark ? 'bg-dark-bg' : 'bg-light-bg'
-    }`}>
-      <div className={`w-full max-w-md p-8 rounded-lg shadow-lg ${
-        isDark ? 'bg-dark-sidebar' : 'bg-white'
-      }`}>
-        <h2 className={`text-3xl font-bold text-center mb-6 ${
-          isDark ? 'text-dark-text' : 'text-light-text'
-        }`}>
+    <div className="min-h-screen flex items-center justify-center bg-light-bg dark:bg-dark-bg">
+      <div className="w-full max-w-md p-8 rounded-lg shadow-lg bg-white dark:bg-dark-panel">
+        {/* Back and Theme Toggle */}
+        <div className="flex justify-between items-center mb-4">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="text-sm text-light-text-dim dark:text-dark-text-dim hover:text-light-text dark:hover:text-dark-text transition-colors"
+            >
+              ← Back to Guest Mode
+            </button>
+          )}
+          <div className={`flex items-center space-x-2 ${!onBack ? 'ml-auto' : ''}`}>
+            <span className="text-sm text-light-text-dim dark:text-dark-text-dim">Theme</span>
+            <div className="flex items-center p-1 rounded-full bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border">
+              <button
+                onClick={() => toggleTheme('light')}
+                className={`p-1 px-3 rounded-full text-sm transition-colors ${theme === 'light' ? 'bg-white dark:bg-gray-700' : 'text-light-text-dim dark:text-dark-text-dim'}`}
+              >
+                Light
+              </button>
+              <button
+                onClick={() => toggleTheme('dark')}
+                className={`p-1 px-3 rounded-full text-sm transition-colors ${theme === 'dark' ? 'bg-black text-white' : 'text-light-text-dim dark:text-dark-text-dim'}`}
+              >
+                Dark
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <h2 className="text-3xl font-bold text-center mb-6 text-light-text dark:text-dark-text">
           {isSignup ? 'Create Account' : 'Welcome Back'}
         </h2>
 
@@ -62,9 +85,7 @@ export default function LoginPage({ onNavigate }) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className={`block mb-2 text-sm font-medium ${
-              isDark ? 'text-dark-text' : 'text-light-text'
-            }`}>
+            <label className="block mb-2 text-sm font-medium text-light-text dark:text-dark-text">
               Email
             </label>
             <input
@@ -72,19 +93,13 @@ export default function LoginPage({ onNavigate }) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className={`w-full px-4 py-2 rounded-md border ${
-                isDark
-                  ? 'bg-dark-bg border-dark-border text-dark-text'
-                  : 'bg-light-bg border-light-border text-light-text'
-              } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+              className="w-full px-4 py-2 rounded-md border bg-light-bg dark:bg-dark-bg border-light-border dark:border-dark-border text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="your@email.com"
             />
           </div>
 
           <div>
-            <label className={`block mb-2 text-sm font-medium ${
-              isDark ? 'text-dark-text' : 'text-light-text'
-            }`}>
+            <label className="block mb-2 text-sm font-medium text-light-text dark:text-dark-text">
               Password
             </label>
             <input
@@ -93,11 +108,7 @@ export default function LoginPage({ onNavigate }) {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
-              className={`w-full px-4 py-2 rounded-md border ${
-                isDark
-                  ? 'bg-dark-bg border-dark-border text-dark-text'
-                  : 'bg-light-bg border-light-border text-light-text'
-              } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+              className="w-full px-4 py-2 rounded-md border bg-light-bg dark:bg-dark-bg border-light-border dark:border-dark-border text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="••••••••"
             />
           </div>
@@ -118,14 +129,10 @@ export default function LoginPage({ onNavigate }) {
         <div className="mt-4">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className={`w-full border-t ${
-                isDark ? 'border-dark-border' : 'border-light-border'
-              }`} />
+              <div className="w-full border-t border-light-border dark:border-dark-border" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className={`px-2 ${
-                isDark ? 'bg-dark-sidebar text-dark-muted' : 'bg-white text-light-muted'
-              }`}>
+              <span className="px-2 bg-white dark:bg-dark-panel text-light-text-dim dark:text-dark-text-dim">
                 Or continue with
               </span>
             </div>
@@ -134,11 +141,7 @@ export default function LoginPage({ onNavigate }) {
           <button
             onClick={handleGoogleLogin}
             disabled={loading}
-            className={`w-full mt-4 py-2 px-4 rounded-md font-medium transition-colors flex items-center justify-center gap-2 ${
-              isDark
-                ? 'bg-dark-bg hover:bg-dark-border text-dark-text'
-                : 'bg-light-bg hover:bg-gray-200 text-light-text'
-            } border ${isDark ? 'border-dark-border' : 'border-light-border'}`}
+            className="w-full mt-4 py-2 px-4 rounded-md font-medium transition-colors flex items-center justify-center gap-2 bg-light-bg dark:bg-dark-bg hover:bg-gray-200 dark:hover:bg-dark-border text-light-text dark:text-dark-text border border-light-border dark:border-dark-border"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path
@@ -162,9 +165,7 @@ export default function LoginPage({ onNavigate }) {
           </button>
         </div>
 
-        <p className={`mt-6 text-center text-sm ${
-          isDark ? 'text-dark-muted' : 'text-light-muted'
-        }`}>
+        <p className="mt-6 text-center text-sm text-light-text-dim dark:text-dark-text-dim">
           {isSignup ? 'Already have an account?' : "Don't have an account?"}{' '}
           <button
             onClick={() => setIsSignup(!isSignup)}

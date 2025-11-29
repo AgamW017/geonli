@@ -4,7 +4,7 @@ import { api } from '../services/api';
 import LeftSidebar from '../components/LeftSidebar';
 import Topbar from '../components/Topbar';
 
-function UploadPage({ onUploadComplete, onLoadSession }) {
+function UploadPage({ onUploadComplete, onLoadSession, onShowLogin }) {
   const [prompt, setPrompt] = useState('');
   const [imageFile, setImageFile] = useState(null);
   const [imageUrl, setImageUrl] = useState(null);
@@ -80,7 +80,7 @@ function UploadPage({ onUploadComplete, onLoadSession }) {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-full">
-        <Topbar />
+        <Topbar onShowLogin={onShowLogin} />
         
         <main className="flex-1 flex flex-col items-center justify-center p-4 overflow-y-auto">
           <div className="w-full max-w-2xl flex flex-col items-center">

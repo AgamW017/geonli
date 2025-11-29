@@ -115,7 +115,7 @@ function ChatPanel({ initialPrompt, sessionData, onMessageSent }) {
     };
 
     return (
-        <aside className="flex flex-col h-full border-l border-light-border dark:border-dark-border transition-all duration-300 ease-in-out bg-light-panel dark:bg-dark-panel w-80">
+        <aside className="flex flex-col h-full border-l border-light-border dark:border-dark-border transition-all duration-300 ease-in-out bg-light-panel dark:bg-dark-panel w-96">
             {/* Chat Header */}
             <div className="flex items-center justify-end h-16 px-4 border-b border-light-border dark:border-dark-border flex-shrink-0">
             </div>

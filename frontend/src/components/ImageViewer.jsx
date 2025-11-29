@@ -40,10 +40,9 @@ function ImageViewer({ uploadedImage, overlays = [] }) {
 
     let constrainedX = x;
     let constrainedY = y;
-
     if (imgWidth > containerWidth) {
       const maxX = 0;
-      const minX = containerWidth - imgWidth;
+      const minX = -(imgWidth - containerWidth);
       constrainedX = Math.max(Math.min(x, maxX), minX);
     } else {
       constrainedX = (containerWidth - imgWidth) / 2;
@@ -51,7 +50,7 @@ function ImageViewer({ uploadedImage, overlays = [] }) {
 
     if (imgHeight > containerHeight) {
       const maxY = 0;
-      const minY = containerHeight - imgHeight;
+      const minY = -(imgHeight - containerHeight);
       constrainedY = Math.max(Math.min(y, maxY), minY);
     } else {
       constrainedY = (containerHeight - imgHeight) / 2;
@@ -124,7 +123,7 @@ function ImageViewer({ uploadedImage, overlays = [] }) {
     return () => container.removeEventListener('wheel', wheelHandler);
   }, [imageContainerRef, handleWheel]);
 
-  // Center image on load
+  // Center image on load and handle container resize
   useEffect(() => {
     const centerImage = () => {
       if (uploadedImage && imageRef.current && imageContainerRef.current) {
@@ -140,7 +139,7 @@ function ImageViewer({ uploadedImage, overlays = [] }) {
 
         const scaleX = containerWidth / imgWidth;
         const scaleY = containerHeight / imgHeight;
-        const fitScale = Math.min(scaleX, scaleY);
+        if (scaleX>1 && scaleY>1){const fitScale = Math.min(scaleX, scaleY);
         
         // Store fit scale as minimum zoom level
         setMinScale(fitScale);
@@ -149,7 +148,12 @@ function ImageViewer({ uploadedImage, overlays = [] }) {
         const x = (containerWidth - imgWidth * fitScale) / 2;
         const y = (containerHeight - imgHeight * fitScale) / 2;
 
-        setTransform({ x, y, scale: fitScale });
+        setTransform({ x, y, scale: fitScale });}
+        else{
+          setMinScale(1);
+          setTransform({ x: 0, y: 0, scale: 1 });
+        }
+        // idk why but this way its working
       }
     };
 
@@ -172,7 +176,6 @@ function ImageViewer({ uploadedImage, overlays = [] }) {
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
         onMouseMove={handleMouseMove}
-        onWheel={handleWheel}
         style={{ touchAction: 'none' }}
       >
         {isPanning && <div className="absolute inset-0 cursor-grabbing z-30"></div>}
@@ -188,7 +191,7 @@ function ImageViewer({ uploadedImage, overlays = [] }) {
           {/* Image */}
           <img
             ref={imageRef}
-            src={uploadedImage || 'https://placehold.co/1200x800/27272a/404040?text=Load+an+image'}
+            src={uploadedImage || 'https://placehold.co/1200x800/27272a/404040?text=NO+IMAGE'}
             alt="Satellite view"
             className="select-none"
             draggable="false"

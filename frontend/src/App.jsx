@@ -11,6 +11,7 @@ function App() {
   const [initialPrompt, setInitialPrompt] = useState("");
   const [sessionData, setSessionData] = useState(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
 
   if (loading) {
     return (
@@ -20,8 +21,8 @@ function App() {
     );
   }
 
-  if (!user) {
-    return <LoginPage />;
+  if (showLogin && !user) {
+    return <LoginPage onBack={() => setShowLogin(false)} />;
   }
 
   const handleUploadComplete = (image, prompt, response) => {
@@ -48,6 +49,10 @@ function App() {
     }, 500);
   };
 
+  const handleShowLogin = () => {
+    setShowLogin(true);
+  };
+
   const handleLoadSession = async (session) => {
     setInitialPrompt(session.initialPrompt);
     setSessionData(session);
@@ -68,6 +73,7 @@ function App() {
           <UploadPage 
             onUploadComplete={handleUploadComplete} 
             onLoadSession={handleLoadSession}
+            onShowLogin={handleShowLogin}
           />
         </div>
       )}
@@ -80,6 +86,7 @@ function App() {
             sessionData={sessionData}
             onNewChat={handleNewChat}
             onLoadSession={handleLoadSession}
+            onShowLogin={handleShowLogin}
           />
         </div>
       )}

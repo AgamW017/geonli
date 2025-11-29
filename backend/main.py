@@ -69,6 +69,17 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     except Exception as e:
         raise HTTPException(status_code=401, detail="Invalid authentication token")
 
+# Optional Authentication Dependency for guest sessions
+async def get_current_user_optional(credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False))):
+    if not credentials:
+        return None  # Guest user
+    try:
+        token = credentials.credentials
+        decoded_token = auth.verify_id_token(token)
+        return decoded_token["uid"]
+    except Exception:
+        return None  # Invalid token, treat as guest
+
 # Mock AI Response Generator
 def generate_mock_ai_response(prompt: str) -> str:
     responses = [
@@ -138,7 +149,7 @@ async def root():
 async def upload_image(
     image: UploadFile = File(...),
     prompt: Optional[str] = Form(None),
-    user_id: str = Depends(get_current_user)
+    user_id: Optional[str] = Depends(get_current_user_optional)
 ):
     try:
         # Generate session ID
@@ -183,17 +194,18 @@ async def upload_image(
         }
         await db.images.insert_one(image_doc)
         
-        session_doc = {
-            "sessionId": session_id,
-            "userId": user_id,
-            "thumbnail": thumbnail,
-            "initialPrompt": prompt or "",
-            "messageCount": len(messages_to_insert),
-            "createdAt": datetime.now(timezone.utc).isoformat(),
-            "updatedAt": datetime.now(timezone.utc).isoformat()
-        }
-        
-        await db.sessions.insert_one(session_doc)
+        # Only create session if user is authenticated
+        if user_id:
+            session_doc = {
+                "sessionId": session_id,
+                "userId": user_id,
+                "thumbnail": thumbnail,
+                "initialPrompt": prompt or "",
+                "messageCount": len(messages_to_insert),
+                "createdAt": datetime.now(timezone.utc).isoformat(),
+                "updatedAt": datetime.now(timezone.utc).isoformat()
+            }
+            await db.sessions.insert_one(session_doc)
         
         return {
             "sessionId": session_id,
@@ -209,16 +221,19 @@ async def upload_image(
 @app.post("/api/chat")
 async def send_message(
     chat_message: ChatMessage,
-    user_id: str = Depends(get_current_user)
+    user_id: Optional[str] = Depends(get_current_user_optional)
 ):
     try:
-        session = await db.sessions.find_one({
-            "sessionId": chat_message.sessionId,
-            "userId": user_id
-        })
-        
-        if not session:
-            raise HTTPException(status_code=404, detail="Session not found")
+        # For guest users, skip session verification
+        session = None
+        if user_id:
+            session = await db.sessions.find_one({
+                "sessionId": chat_message.sessionId,
+                "userId": user_id
+            })
+            
+            if not session:
+                raise HTTPException(status_code=404, detail="Session not found")
         
         ai_response = generate_mock_ai_response(chat_message.message)
         import random
@@ -249,17 +264,19 @@ async def send_message(
                 {"$set": {"overlays": new_overlays}}
             )
         
-        await db.sessions.update_one(
-            {"sessionId": chat_message.sessionId},
-            {
-                "$set": {"updatedAt": datetime.now(timezone.utc).isoformat()},
-                "$inc": {"messageCount": 2}
-            }
-        )
+        # Update session only if user is authenticated
+        if user_id and session:
+            await db.sessions.update_one(
+                {"sessionId": chat_message.sessionId},
+                {
+                    "$set": {"updatedAt": datetime.now(timezone.utc).isoformat()},
+                    "$inc": {"messageCount": 2}
+                }
+            )
         
         return {
             "message": ai_response,
-            "overlays": new_overlays if new_overlays else session.get("overlays", [])
+            "overlays": new_overlays if new_overlays else (session.get("overlays", []) if session else [])
         }
     
     except HTTPException:
@@ -270,16 +287,18 @@ async def send_message(
 @app.get("/api/chat/{session_id}")
 async def get_chat_history(
     session_id: str,
-    user_id: str = Depends(get_current_user)
+    user_id: Optional[str] = Depends(get_current_user_optional)
 ):
     try:
-        session = await db.sessions.find_one({
-            "sessionId": session_id,
-            "userId": user_id
-        })
-        
-        if not session:
-            raise HTTPException(status_code=404, detail="Session not found")
+        # For authenticated users, verify session ownership
+        if user_id:
+            session = await db.sessions.find_one({
+                "sessionId": session_id,
+                "userId": user_id
+            })
+            
+            if not session:
+                raise HTTPException(status_code=404, detail="Session not found")
         
         messages = await db.messages.find(
             {"sessionId": session_id},
@@ -315,17 +334,18 @@ async def get_sessions(user_id: str = Depends(get_current_user)):
 @app.get("/api/sessions/{session_id}/image")
 async def get_session_image(
     session_id: str,
-    user_id: str = Depends(get_current_user)
+    user_id: Optional[str] = Depends(get_current_user_optional)
 ):
     try:
-        # Verify session belongs to user
-        session = await db.sessions.find_one(
-            {"sessionId": session_id, "userId": user_id},
-            {"_id": 0, "sessionId": 1}
-        )
-        
-        if not session:
-            raise HTTPException(status_code=404, detail="Session not found")
+        # For authenticated users, verify session ownership
+        if user_id:
+            session = await db.sessions.find_one(
+                {"sessionId": session_id, "userId": user_id},
+                {"_id": 0, "sessionId": 1}
+            )
+            
+            if not session:
+                raise HTTPException(status_code=404, detail="Session not found")
         
         # Fetch image from images collection
         image_data = await db.images.find_one(

@@ -1,17 +1,17 @@
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 
-function Topbar() {
+function Topbar({ onShowLogin }) {
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
 
   return (
-    <header className="flex-shrink-0 flex items-center justify-between h-16 px-4 sm:px-6 border-b border-light-border dark:border-dark-border">
+    <header className="flex-shrink-0 flex items-center justify-between h-12 px-4 sm:px-6 border-b border-light-border dark:border-dark-border">
       <h1 className="text-xl font-semibold">GeoNLI</h1>
       
       <div className="flex items-center gap-4">
-        {/* User Info */}
-        {user && (
+        {/* User Info or Login Button */}
+        {user ? (
           <div className="flex items-center gap-2">
             <span className="text-sm text-light-text-dim dark:text-dark-text-dim">
               {user.email}
@@ -23,6 +23,13 @@ function Topbar() {
               Logout
             </button>
           </div>
+        ) : (
+          <button
+            onClick={onShowLogin}
+            className="px-4 py-1.5 text-sm rounded-md bg-blue-500 text-white hover:bg-blue-600 transition-colors font-medium"
+          >
+            Login
+          </button>
         )}
         
         {/* Theme Toggle */}

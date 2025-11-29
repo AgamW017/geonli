@@ -11,10 +11,16 @@ const apiClient = axios.create({
 });
 apiClient.interceptors.request.use(
   async (config) => {
-    const user = auth.currentUser;
-    if (user) {
-      const token = await user.getIdToken();
-      config.headers.Authorization = `Bearer ${token}`;
+    try {
+      const user = auth.currentUser;
+      if (user) {
+        const token = await user.getIdToken();
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      // If no user, continue without auth (guest mode)
+    } catch (error) {
+      // If auth fails, continue without token (guest mode)
+      console.log('Continuing as guest user');
     }
     return config;
   },
