@@ -17,10 +17,30 @@ apiClient.interceptors.request.use(
         const token = await user.getIdToken();
         config.headers.Authorization = `Bearer ${token}`;
       }
-      // If no user, continue without auth (guest mode)
+      // If no user, attach a persistent guest id
+      if (!user) {
+        const key = 'geonli_guest_id';
+        let guestId = localStorage.getItem(key);
+        if (!guestId) {
+          // Generate a simple UUID v4
+          guestId = ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+            (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+          );
+          localStorage.setItem(key, guestId);
+        }
+        config.headers['X-Guest-Id'] = guestId;
+      }
     } catch (error) {
-      // If auth fails, continue without token (guest mode)
-      console.log('Continuing as guest user');
+      // If auth fails, still proceed in guest mode
+      const key = 'geonli_guest_id';
+      let guestId = localStorage.getItem(key);
+      if (!guestId) {
+        guestId = ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+          (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+        );
+        localStorage.setItem(key, guestId);
+      }
+      config.headers['X-Guest-Id'] = guestId;
     }
     return config;
   },

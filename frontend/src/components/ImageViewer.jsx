@@ -1,23 +1,20 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
+import { TransformWrapper, TransformComponent, useTransformEffect } from 'react-zoom-pan-pinch';
 
 function ImageViewer({ uploadedImage, overlays = [] }) {
-  const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
-  const [isPanning, setIsPanning] = useState(false);
-  const [minScale, setMinScale] = useState(1);
-  const imageContainerRef = useRef(null);
   const imageRef = useRef(null);
+  const transformComponentRef = useRef(null);
+  const containerRef = useRef(null);
   
+  // State for dynamic configuration
+  const [initialConfig, setInitialConfig] = useState(null);
+  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
+
   const overlaysWithColors = useMemo(() => {
     const getRandomColor = () => {
       const colors = [
-        '#ff0000',
-        '#ff8800',
-        '#00ffff',
-        '#0088ff',
-        '#ff00ff',
-        '#ffff00',
-        '#ff0088',
-        '#8800ff',
+        '#ff0000', '#ff8800', '#00ffff', '#0088ff', '#ff00ff',
+        '#ffff00', '#ff0088', '#8800ff',
       ];
       return colors[Math.floor(Math.random() * colors.length)];
     };
@@ -28,263 +25,200 @@ function ImageViewer({ uploadedImage, overlays = [] }) {
     }));
   }, [overlays]);
 
-  const constrainPan = (x, y, scale) => {
-    if (!imageRef.current || !imageContainerRef.current) return { x, y };
+  const handleImageLoad = (e) => {
+    const { naturalWidth, naturalHeight } = e.target;
     
-    const img = imageRef.current;
-    const container = imageContainerRef.current;
-    const imgWidth = img.naturalWidth * scale;
-    const imgHeight = img.naturalHeight * scale;
-    const containerWidth = container.clientWidth;
-    const containerHeight = container.clientHeight;
-
-    let constrainedX = x;
-    let constrainedY = y;
-    if (imgWidth > containerWidth) {
-      const maxX = 0;
-      const minX = -(imgWidth - containerWidth);
-      constrainedX = Math.max(Math.min(x, maxX), minX);
-    } else {
-      constrainedX = (containerWidth - imgWidth) / 2;
-    }
-
-    if (imgHeight > containerHeight) {
-      const maxY = 0;
-      const minY = -(imgHeight - containerHeight);
-      constrainedY = Math.max(Math.min(y, maxY), minY);
-    } else {
-      constrainedY = (containerHeight - imgHeight) / 2;
-    }
-
-    return { x: constrainedX, y: constrainedY };
-  };
-
-  const handleMouseDown = (e) => {
-    e.preventDefault();
-    setIsPanning(true);
-  };
-
-  const handleMouseUp = () => {
-    setIsPanning(false);
-  };
-
-  const handleMouseLeave = () => {
-    setIsPanning(false);
-  };
-
-  const handleMouseMove = (e) => {
-    if (!isPanning) return;
-    const newX = transform.x + e.movementX;
-    const newY = transform.y + e.movementY;
-    const constrained = constrainPan(newX, newY, transform.scale);
-    setTransform(t => ({
-      ...t,
-      x: constrained.x,
-      y: constrained.y,
-    }));
-  };
-
-  const handleWheel = (e) => {
-    e.preventDefault();
-    const container = imageContainerRef.current;
-    if (!container) return;
-    
-    const rect = container.getBoundingClientRect();
-    const scaleAmount = -e.deltaY * 0.001;
-    const newScale = Math.min(Math.max(minScale, transform.scale + scaleAmount), 10);
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-
-    // Calculate new origin
-    let newX = transform.x + (mouseX - transform.x) * (1 - newScale / transform.scale);
-    let newY = transform.y + (mouseY - transform.y) * (1 - newScale / transform.scale);
-
-    // Constrain pan after zoom
-    const constrained = constrainPan(newX, newY, newScale);
-
-    setTransform({
-      scale: newScale,
-      x: constrained.x,
-      y: constrained.y,
+    setImageDimensions({
+      width: naturalWidth,
+      height: naturalHeight
     });
+
+    if (containerRef.current) {
+      const { clientWidth, clientHeight } = containerRef.current;
+      const scale = Math.min(
+        clientWidth / naturalWidth,
+        clientHeight / naturalHeight
+      );
+
+      const x = (clientWidth - naturalWidth * scale) / 2;
+      const y = (clientHeight - naturalHeight * scale) / 2;
+
+      // Prevent infinite loop: only set if we haven't calculated it yet
+      if (!initialConfig) {
+        setInitialConfig({ scale, x, y });
+      }
+    }
   };
 
-  useEffect(() => {
-    const container = imageContainerRef.current;
-    if (!container) return;
+  // Child component that listens to transform changes and renders overlays
+  function OverlayLayer({ imageDimensions, overlays, colorizedOverlays, initialScale = 1 }) {
+    const [scale, setScale] = useState(initialScale || 1);
 
-    const wheelHandler = (ev) => {
-      // Prevent page scroll
-      ev.preventDefault();
-      handleWheel(ev);
-    };
+    // This hook runs on every pan/zoom; ensures we get the latest scale
+    useTransformEffect(({ state }) => {
+      if (state?.scale) setScale(state.scale);
+    });
 
-    container.addEventListener('wheel', wheelHandler, { passive: false });
-    return () => container.removeEventListener('wheel', wheelHandler);
-  }, [imageContainerRef, handleWheel]);
-
-  // Center image on load and handle container resize
-  useEffect(() => {
-    const centerImage = () => {
-      if (uploadedImage && imageRef.current && imageContainerRef.current) {
-        const img = imageRef.current;
-        const container = imageContainerRef.current;
-        
-        const imgWidth = img.naturalWidth;
-        const imgHeight = img.naturalHeight;
-        const containerWidth = container.clientWidth;
-        const containerHeight = container.clientHeight;
-
-        if (imgWidth === 0 || imgHeight === 0) return;
-
-        const scaleX = containerWidth / imgWidth;
-        const scaleY = containerHeight / imgHeight;
-        if (scaleX>1 && scaleY>1){const fitScale = Math.min(scaleX, scaleY);
-        
-        // Store fit scale as minimum zoom level
-        setMinScale(fitScale);
-
-        // Center the image at fit scale
-        const x = (containerWidth - imgWidth * fitScale) / 2;
-        const y = (containerHeight - imgHeight * fitScale) / 2;
-
-        setTransform({ x, y, scale: fitScale });}
-        else{
-          setMinScale(1);
-          setTransform({ x: 0, y: 0, scale: 1 });
-        }
-        // idk why but this way its working
+    useEffect(() => {
+      if (initialScale && initialScale !== scale) {
+        setScale(initialScale);
       }
-    };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [initialScale]);
 
-    if (imageRef.current?.complete) {
-        centerImage();
-    } else if (imageRef.current) {
-        imageRef.current.onload = centerImage;
-    }
+    if (imageDimensions.width === 0) return null;
 
-  }, [uploadedImage]);
+
+    return (
+      <svg
+        className="absolute top-0 left-0"
+        width={imageDimensions.width}
+        height={imageDimensions.height}
+        style={{ pointerEvents: 'none' }}
+        viewBox={`0 0 ${imageDimensions.width} ${imageDimensions.height}`}
+      >
+        {colorizedOverlays.map(overlay => {
+          const effectiveScale = Math.max(scale || 1, 0.1);
+          const styles = {
+            strokeWidth: 2 / effectiveScale,
+            fontSize: 14 / effectiveScale,
+            pinRadius: 3 / effectiveScale,
+            pinHitRadius: 15 / effectiveScale,
+            boxHitPadding: 5 / effectiveScale,
+            textOffsetBox: 8 / effectiveScale,
+            textOffsetPin: 18 / effectiveScale,
+          };
+
+          if (overlay.type === 'box') {
+            return (
+              <g key={overlay.id}>
+                <rect
+                  x={overlay.x - styles.boxHitPadding}
+                  y={overlay.y - styles.boxHitPadding}
+                  width={overlay.width + (styles.boxHitPadding * 2)}
+                  height={overlay.height + (styles.boxHitPadding * 2)}
+                  fill="transparent"
+                  style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+                  onClick={(e) => { e.stopPropagation(); console.log(`Clicked box ${overlay.id}`)}}
+                />
+                <rect
+                  x={overlay.x}
+                  y={overlay.y}
+                  width={overlay.width}
+                  height={overlay.height}
+                  fill="none"
+                  stroke={overlay.color || 'var(--color-accent)'}
+                  strokeWidth={styles.strokeWidth}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                {overlay.label && (
+                  <text
+                    x={overlay.x + overlay.width / 2}
+                    y={overlay.y - styles.textOffsetBox}
+                    textAnchor="middle"
+                    fill={overlay.color || '#ef4444'}
+                    fontSize={styles.fontSize}
+                    fontWeight="600"
+                  >
+                    {overlay.label}
+                  </text>
+                )}
+              </g>
+            );
+          }
+          if (overlay.type === 'pin') {
+            return (
+              <g key={overlay.id}>
+                <circle
+                  cx={overlay.x}
+                  cy={overlay.y}
+                  r={styles.pinHitRadius}
+                  fill="transparent"
+                  style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+                  onClick={(e) => { e.stopPropagation(); console.log(`Clicked pin ${overlay.id}`)}}
+                />
+                <circle
+                  cx={overlay.x}
+                  cy={overlay.y}
+                  r={styles.pinRadius}
+                  fill={overlay.color || 'var(--color-accent)'}
+                  style={{ pointerEvents: 'none' }}
+                />
+                {overlay.label && (
+                  <text
+                    x={overlay.x}
+                    y={overlay.y - styles.textOffsetPin}
+                    textAnchor="middle"
+                    fill={overlay.color || '#3b82f6'}
+                    fontSize={styles.fontSize}
+                    fontWeight="600"
+                  >
+                    {overlay.label}
+                  </text>
+                )}
+              </g>
+            );
+          }
+          return null;
+        })}
+      </svg>
+    );
+  }
 
   return (
-    <div className="flex-1 flex flex-col p-4 sm:p-6 overflow-hidden relative">
-      
-      {/* Image Viewer */}
+    <div className="flex-1 flex flex-col p-4 sm:p-6 overflow-hidden relative h-full min-w-0 w-0">
       <div 
-        ref={imageContainerRef}
-        className="relative flex-1 w-full h-full rounded-lg overflow-hidden cursor-grab bg-light-bg dark:bg-dark-bg"
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseLeave}
-        onMouseMove={handleMouseMove}
-        style={{ touchAction: 'none' }}
+        ref={containerRef} 
+        className="relative flex-1 w-full h-full rounded-lg overflow-hidden bg-light-bg dark:bg-dark-bg"
       >
-        {isPanning && <div className="absolute inset-0 cursor-grabbing z-30"></div>}
-        
-        <div
-          className="absolute"
-          style={{
-            transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
-            transformOrigin: '0 0',
-            transition: isPanning ? 'none' : 'transform 0.1s ease-out',
-          }}
+        <TransformWrapper
+          ref={transformComponentRef}
+          // Key change forces re-render when config is ready
+          key={initialConfig ? "loaded" : "loading"} 
+          initialScale={initialConfig ? initialConfig.scale : 1}
+          initialPositionX={initialConfig ? initialConfig.x : 0}
+          initialPositionY={initialConfig ? initialConfig.y : 0}
+          minScale={initialConfig ? initialConfig.scale * 0.75 : 0.75}
+          velocityAnimation={{disabled: false, animationTime: 250, easing: "easeOutQuad"}}
+          alignmentAnimation={{ disabled: false, animationTime: 250, easing: "easeOutQuad" }}
+          zoomAnimation={{ disabled: false, animationTime: 200, easing: "easeOutQuad" }}
+          maxScale={20}
+          centerOnInit={true} 
+          wheel={{ step: 0.1 }}
         >
-          {/* Image */}
-          <img
-            ref={imageRef}
-            src={uploadedImage || 'https://placehold.co/1200x800/27272a/404040?text=NO+IMAGE'}
-            alt="Satellite view"
-            className="select-none"
-            draggable="false"
-          />
-          
-          {/* SVG Overlay */}
-          <svg
-            className="absolute top-0 left-0"
-            width={imageRef.current?.naturalWidth || 1200}
-            height={imageRef.current?.naturalHeight || 800}
-            style={{
-              pointerEvents: 'none',
-            }}
-          >
-            {overlaysWithColors.map(overlay => {
-              if (overlay.type === 'box') {
-                return (
-                  <g key={overlay.id}>
-                    <rect
-                      x={overlay.x - 5 / transform.scale}
-                      y={overlay.y - 5 / transform.scale}
-                      width={overlay.width + 10 / transform.scale}
-                      height={overlay.height + 10 / transform.scale}
-                      fill="transparent"
-                      style={{ pointerEvents: 'auto', cursor: 'pointer' }}
-                      onClick={(e) => { e.stopPropagation(); console.log(`Clicked box ${overlay.id}`)}}
-                    />
-                    {/* Visible box */}
-                    <rect
-                      x={overlay.x}
-                      y={overlay.y}
-                      width={overlay.width}
-                      height={overlay.height}
-                      fill="none"
-                      stroke={overlay.color || '#ef4444'}
-                      strokeWidth={2 / transform.scale}
-                      style={{ pointerEvents: 'none' }}
-                    />
-                    {overlay.label && (
-                      <text
-                        x={overlay.x + overlay.width / 2}
-                        y={overlay.y - 8 / transform.scale}
-                        textAnchor="middle"
-                        fill={overlay.color || '#ef4444'}
-                        fontSize={14 / transform.scale}
-                        fontWeight="600"
-                        style={{ pointerEvents: 'none', userSelect: 'none' }}
-                      >
-                        {overlay.label}
-                      </text>
-                    )}
-                  </g>
-                );
-              }
-              if (overlay.type === 'pin') {
-                return (
-                  <g key={overlay.id}>
-                    <circle
-                      cx={overlay.x}
-                      cy={overlay.y}
-                      r={15 / transform.scale}
-                      fill="transparent"
-                      style={{ pointerEvents: 'auto', cursor: 'pointer' }}
-                      onClick={(e) => { e.stopPropagation(); console.log(`Clicked pin ${overlay.id}`)}}
-                    />
-                    {/* Visible pin */}
-                    <circle
-                      cx={overlay.x}
-                      cy={overlay.y}
-                      r={3 / transform.scale}
-                      fill={overlay.color || '#3b82f6'}
-                      style={{ pointerEvents: 'none' }}
-                    />
-                    {overlay.label && (
-                      <text
-                        x={overlay.x}
-                        y={overlay.y - 18 / transform.scale}
-                        textAnchor="middle"
-                        fill={overlay.color || '#3b82f6'}
-                        fontSize={14 / transform.scale}
-                        fontWeight="600"
-                        style={{ pointerEvents: 'none', userSelect: 'none' }}
-                      >
-                        {overlay.label}
-                      </text>
-                    )}
-                  </g>
-                );
-              }
-              return null;
-            })}
-          </svg>
-        </div>
+          {({ zoomIn, zoomOut, resetTransform, state }) => (
+            <TransformComponent
+              wrapperStyle={{ width: "100%", height: "100%", overflow: "hidden" }}
+            >
+              <div 
+                style={{ 
+                  position: "relative", 
+                  width: "fit-content", 
+                  height: "fit-content",
+                  opacity: initialConfig ? 1 : 0,
+                  transition: 'opacity 0.2s ease-in'
+                }}
+              >
+                <img
+                  ref={imageRef}
+                  src={uploadedImage || 'https://placehold.co/1200x800/27272a/404040?text=NO+IMAGE'}
+                  alt="Satellite view"
+                  className="select-none block max-w-none"
+                  draggable="false"
+                  onLoad={handleImageLoad}
+                />
+
+                <OverlayLayer 
+                  imageDimensions={imageDimensions} 
+                  overlays={overlays} 
+                  colorizedOverlays={overlaysWithColors}
+                  initialScale={initialConfig?.scale || 1}
+                />
+              </div>
+            </TransformComponent>
+          )}
+        </TransformWrapper>
       </div>
     </div>
   );

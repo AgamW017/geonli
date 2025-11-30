@@ -2,7 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Expose theme colors as CSS variables so components and SVG can use them uniformly */
 @layer base {
+  :root {
+    --color-bg: theme('colors.light-bg');
+    --color-panel: theme('colors.light-panel');
+    --color-text: theme('colors.light-text');
+    --color-text-dim: theme('colors.light-text-dim');
+    --color-border: theme('colors.light-border');
+    --color-accent: theme('colors.light-accent');
+  }
+  .dark {
+    --color-bg: theme('colors.dark-bg');
+    --color-panel: theme('colors.dark-panel');
+    --color-text: theme('colors.dark-text');
+    --color-text-dim: theme('colors.dark-text-dim');
+    --color-border: theme('colors.dark-border');
+    --color-accent: theme('colors.dark-accent');
+  }
+  
   * {
     margin: 0;
     padding: 0;

@@ -64,6 +64,7 @@ function ChatPage({ uploadedImage: initialImage, initialPrompt, sessionData, onN
             initialPrompt={initialPrompt} 
             sessionData={sessionData}
             onMessageSent={handleMessageSent}
+            onOverlaysUpdate={(newOverlays) => setOverlays(newOverlays)}
           />
         </main>
       </div>

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, Depends, HTTPException, Form
+from fastapi import FastAPI, File, UploadFile, Depends, HTTPException, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -70,15 +70,24 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         raise HTTPException(status_code=401, detail="Invalid authentication token")
 
 # Optional Authentication Dependency for guest sessions
-async def get_current_user_optional(credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False))):
+async def get_current_user_optional(request: Request, credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False))):
+    # Prefer Firebase auth if provided
     if not credentials:
-        return None  # Guest user
+        # Fallback to guest header
+        guest_id = request.headers.get('X-Guest-Id')
+        if guest_id:
+            return f"guest:{guest_id}"
+        return None  # Guest user without id
     try:
         token = credentials.credentials
         decoded_token = auth.verify_id_token(token)
         return decoded_token["uid"]
     except Exception:
-        return None  # Invalid token, treat as guest
+        # Invalid token, try guest header
+        guest_id = request.headers.get('X-Guest-Id')
+        if guest_id:
+            return f"guest:{guest_id}"
+        return None  # treat as anonymous guest
 
 # Mock AI Response Generator
 def generate_mock_ai_response(prompt: str) -> str:
@@ -194,7 +203,7 @@ async def upload_image(
         }
         await db.images.insert_one(image_doc)
         
-        # Only create session if user is authenticated
+        # Create session for authenticated users or guests with id
         if user_id:
             session_doc = {
                 "sessionId": session_id,
@@ -319,8 +328,10 @@ async def get_chat_history(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/sessions")
-async def get_sessions(user_id: str = Depends(get_current_user)):
+async def get_sessions(user_id: Optional[str] = Depends(get_current_user_optional)):
     try:
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Not authenticated or guest id missing")
         sessions = await db.sessions.find(
             {"userId": user_id},
             {"_id": 0, "sessionId": 1, "thumbnail": 1, "initialPrompt": 1, "createdAt": 1, "updatedAt": 1, "messageCount": 1}

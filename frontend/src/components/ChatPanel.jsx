@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { MessageSquareIcon, SendIcon } from './icons';
 import { api } from '../services/api';
 
-function ChatPanel({ initialPrompt, sessionData, onMessageSent }) {
+function ChatPanel({ initialPrompt, sessionData, onMessageSent, onOverlaysUpdate }) {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
@@ -94,6 +94,11 @@ function ChatPanel({ initialPrompt, sessionData, onMessageSent }) {
                 return [...filtered, aiMessage];
             });
             
+            // If backend sent overlays, update them in parent
+            if (response?.overlays && response.overlays.length > 0 && onOverlaysUpdate) {
+                onOverlaysUpdate(response.overlays);
+            }
+
             if (onMessageSent) {
                 onMessageSent(sessionData.sessionId);
             }
@@ -115,7 +120,7 @@ function ChatPanel({ initialPrompt, sessionData, onMessageSent }) {
     };
 
     return (
-        <aside className="flex flex-col h-full border-l border-light-border dark:border-dark-border transition-all duration-300 ease-in-out bg-light-panel dark:bg-dark-panel w-96">
+        <aside className="flex flex-col h-full border-l border-light-border dark:border-dark-border transition-all duration-300 ease-in-out bg-light-panel dark:bg-dark-panel w-96 flex-shrink-0">
             {/* Chat Header */}
             <div className="flex items-center justify-end h-16 px-4 border-b border-light-border dark:border-dark-border flex-shrink-0">
             </div>
@@ -136,7 +141,7 @@ function ChatPanel({ initialPrompt, sessionData, onMessageSent }) {
                     <div key={msg.id} className={`flex ${msg.from === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div className={`p-3 rounded-lg max-w-[80%]
                             ${msg.from === 'user' 
-                                ? 'bg-blue-600 text-white' 
+                                ? 'text-white bg-[var(--color-accent)]' 
                                 : 'bg-light-bg dark:bg-dark-bg'
                             }
                         `}>
@@ -170,7 +175,7 @@ function ChatPanel({ initialPrompt, sessionData, onMessageSent }) {
                     />
                     <button
                         type="submit"
-                        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full text-white bg-[var(--color-accent)] hover:opacity-90 disabled:bg-gray-400"
                         disabled={!input.trim() || loading}
                     >
                         {loading ? (
