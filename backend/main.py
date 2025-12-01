@@ -14,6 +14,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from PIL import Image
 import io
 import base64
+from gradio_client import Client
 
 load_dotenv()
 
@@ -91,13 +92,13 @@ async def get_current_user_optional(request: Request, credentials: Optional[HTTP
 
 # Mock AI Response Generator
 def generate_mock_ai_response(prompt: str) -> str:
-    responses = [
-        f"I've analyzed the image based on your query: '{prompt}'. The satellite imagery shows interesting geographical features.",
-        f"Based on '{prompt}', I can identify several key elements in this image.",
-        f"Analyzing your question '{prompt}' - the image reveals distinctive patterns and structures.",
-    ]
-    import random
-    return random.choice(responses)
+    client = Client("http://localhost:8000/")
+    result = client.predict(
+                    "https://raw.githubusercontent.com/gradio-app/gradio/main/test/test_files/bus.png",	# str (filepath or URL to image) in 'Upload Satellite Image' Image component
+                    "Howdy!",	# str  in 'Your Question' Textbox component
+                    api_name="/predict"
+    )
+    return result
 
 def generate_mock_overlays() -> List[dict]:
     import random
