@@ -97,7 +97,7 @@ function UploadPage({ onUploadComplete, onLoadSession, onShowLogin }) {
         {/* Drop zone */}
         <div
           className={`relative flex flex-col items-center justify-center w-full h-64 rounded-2xl border-2 border-dashed
-            ${isDragging ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'border-light-border dark:border-dark-border'}
+            ${isDragging ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/10' : 'border-light-border dark:border-dark-border'}
             ${imageUrl ? 'border-none' : ''}
             transition-all duration-300 ease-in-out cursor-pointer`}
           onClick={() => fileInputRef.current?.click()}
@@ -137,13 +137,13 @@ function UploadPage({ onUploadComplete, onLoadSession, onShowLogin }) {
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Ask anything..."
-              className="w-full pl-4 pr-12 py-4 rounded-full bg-light-panel dark:bg-dark-panel border border-light-border dark:border-dark-border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              className="w-full pl-4 pr-12 py-4 rounded-full bg-light-panel dark:bg-dark-panel border border-light-border dark:border-dark-border focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] transition-all"
             />
             <button
               type="submit"
               disabled={!imageFile || uploading}
               className={`absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full transition-colors
-                ${imageFile && !uploading ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-light-bg dark:bg-dark-bg text-light-text-dim dark:text-dark-text-dim cursor-not-allowed'}`}
+                ${imageFile && !uploading ? 'bg-[var(--color-secondary)] text-white hover:opacity-90' : 'bg-light-bg dark:bg-dark-bg text-light-text-dim dark:text-dark-text-dim cursor-not-allowed'}`}
             >
               {uploading ? (
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />

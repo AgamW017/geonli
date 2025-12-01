@@ -102,25 +102,25 @@ function ImageViewer({ uploadedImage, overlays = [] }) {
                   onClick={(e) => { e.stopPropagation(); console.log(`Clicked box ${overlay.id}`)}}
                 />
                 <rect
-                  x={overlay.x}
-                  y={overlay.y}
-                  width={overlay.width}
-                  height={overlay.height}
-                  fill="none"
-                  stroke={overlay.color || 'var(--color-accent)'}
-                  strokeWidth={styles.strokeWidth}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                {overlay.label && (
-                  <text
-                    x={overlay.x + overlay.width / 2}
-                    y={overlay.y - styles.textOffsetBox}
-                    textAnchor="middle"
-                    fill={overlay.color || '#ef4444'}
-                    fontSize={styles.fontSize}
-                    fontWeight="600"
-                  >
+                    x={overlay.x}
+                    y={overlay.y}
+                    width={overlay.width}
+                    height={overlay.height}
+                    fill="none"
+                    stroke={overlay.color || 'var(--color-secondary)'}
+                    strokeWidth={styles.strokeWidth}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  {overlay.label && (
+                    <text
+                      x={overlay.x + overlay.width / 2}
+                      y={overlay.y - styles.textOffsetBox}
+                      textAnchor="middle"
+                      fill={overlay.color || 'var(--color-secondary)'}
+                      fontSize={styles.fontSize}
+                      fontWeight="600"
+                    >
                     {overlay.label}
                   </text>
                 )}
@@ -142,7 +142,7 @@ function ImageViewer({ uploadedImage, overlays = [] }) {
                   cx={overlay.x}
                   cy={overlay.y}
                   r={styles.pinRadius}
-                  fill={overlay.color || 'var(--color-accent)'}
+                  fill={overlay.color || 'var(--color-secondary)'}
                   style={{ pointerEvents: 'none' }}
                 />
                 {overlay.label && (
@@ -150,7 +150,7 @@ function ImageViewer({ uploadedImage, overlays = [] }) {
                     x={overlay.x}
                     y={overlay.y - styles.textOffsetPin}
                     textAnchor="middle"
-                    fill={overlay.color || '#3b82f6'}
+                    fill={overlay.color || 'var(--color-secondary)'}
                     fontSize={styles.fontSize}
                     fontWeight="600"
                   >

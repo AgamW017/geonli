@@ -26,7 +26,7 @@ function Topbar({ onShowLogin }) {
         ) : (
           <button
             onClick={onShowLogin}
-            className="px-4 py-1.5 text-sm rounded-md bg-blue-500 text-white hover:bg-blue-600 transition-colors font-medium"
+            className="px-4 py-1.5 text-sm rounded-md bg-[var(--color-secondary)] text-white hover:opacity-90 transition-colors font-medium"
           >
             Login
           </button>
@@ -38,13 +38,13 @@ function Topbar({ onShowLogin }) {
           <div className="flex items-center p-1 rounded-full bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border">
             <button
               onClick={() => toggleTheme('light')}
-              className={`p-1 px-3 rounded-full text-sm ${theme === 'light' ? 'bg-white dark:bg-gray-700' : 'text-light-text-dim dark:text-dark-text-dim'}`}
+              className={`p-1 px-3 rounded-full text-sm ${theme === 'light' ? 'bg-[var(--color-accent)] text-white' : 'text-light-text-dim dark:text-dark-text-dim'}`}
             >
               Light
             </button>
             <button
               onClick={() => toggleTheme('dark')}
-              className={`p-1 px-3 rounded-full text-sm ${theme === 'dark' ? 'bg-black text-white' : 'text-light-text-dim dark:text-dark-text-dim'}`}
+              className={`p-1 px-3 rounded-full text-sm ${theme === 'dark' ? 'bg-[var(--color-accent)] text-white' : 'text-light-text-dim dark:text-dark-text-dim'}`}
             >
               Dark
             </button>

@@ -129,7 +129,7 @@ function ChatPanel({ initialPrompt, sessionData, onMessageSent, onOverlaysUpdate
             <div className="flex-1 p-4 space-y-4 overflow-y-auto">
                 {loadingHistory ? (
                     <div className="flex items-center justify-center h-full">
-                        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                        <div className="w-8 h-8 border-2 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
                     </div>
                 ) : messages.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-center text-light-text-dim dark:text-dark-text-dim">
@@ -141,16 +141,16 @@ function ChatPanel({ initialPrompt, sessionData, onMessageSent, onOverlaysUpdate
                     <div key={msg.id} className={`flex ${msg.from === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div className={`p-3 rounded-lg max-w-[80%]
                             ${msg.from === 'user' 
-                                ? 'text-white bg-[var(--color-accent)]' 
+                                ? 'text-white bg-[var(--color-secondary)]' 
                                 : 'bg-light-bg dark:bg-dark-bg'
                             }
                         `}>
                             {msg.isThinking ? (
                                 <div className="flex items-center gap-2">
                                     <div className="flex gap-1">
-                                        <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                                        <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                                        <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                                        <span className="w-1 h-1 bg-[var(--color-accent)] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                                        <span className="w-1 h-1 bg-[var(--color-accent)] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                                        <span className="w-1 h-1 bg-[var(--color-accent)] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
                                     </div>
                                     <p className="text-light-text-dim dark:text-dark-text-dim italic">{msg.text}</p>
                                 </div>
@@ -171,7 +171,7 @@ function ChatPanel({ initialPrompt, sessionData, onMessageSent, onOverlaysUpdate
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         placeholder="Ask a follow-up..."
-                        className="w-full pl-4 pr-12 py-3 rounded-full bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                        className="w-full pl-4 pr-12 py-3 rounded-full bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] transition-all"
                     />
                     <button
                         type="submit"

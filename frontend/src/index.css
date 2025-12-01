@@ -11,6 +11,7 @@
     --color-text-dim: theme('colors.light-text-dim');
     --color-border: theme('colors.light-border');
     --color-accent: theme('colors.light-accent');
+    --color-secondary: theme('colors.light-secondary');
   }
   .dark {
     --color-bg: theme('colors.dark-bg');
@@ -19,8 +20,9 @@
     --color-text-dim: theme('colors.dark-text-dim');
     --color-border: theme('colors.dark-border');
     --color-accent: theme('colors.dark-accent');
+    --color-secondary: theme('colors.dark-secondary');
   }
-  
+
   * {
     margin: 0;
     padding: 0;

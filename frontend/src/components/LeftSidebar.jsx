@@ -113,7 +113,7 @@ const LeftSidebar = forwardRef(({ isOpen, onToggleSidebar, onNewChat, onLoadSess
         <button 
           onClick={onNewChat}
           title="New Chat" 
-          className={`flex items-center rounded-lg text-light-text-dim dark:text-dark-text-dim bg-light-bg dark:bg-dark-bg hover:bg-light-border dark:hover:bg-dark-border transition-all duration-300 ease-in-out overflow-hidden
+          className={`flex items-center rounded-lg text-white bg-[var(--color-accent)] hover:opacity-90 transition-all duration-300 ease-in-out overflow-hidden
             ${isOpen ? 'w-full gap-3 p-3' : 'rounded-full w-12 h-12 p-3'}`}
         >
           <PlusIcon className="w-6 h-6 flex-shrink-0" />
@@ -137,7 +137,7 @@ const LeftSidebar = forwardRef(({ isOpen, onToggleSidebar, onNewChat, onLoadSess
             
             {loading ? (
               <div className="flex items-center justify-center p-4">
-                <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                <div className="w-6 h-6 border-2 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
               </div>
             ) : sessions.length === 0 ? (
               <div className={`flex flex-col items-center justify-center text-center p-4 rounded-lg bg-light-bg dark:bg-dark-bg transition-all duration-300 ease-in-out ${isOpen ? 'h-24 w-full' : 'w-12 h-12'}`}>
@@ -173,7 +173,7 @@ const LeftSidebar = forwardRef(({ isOpen, onToggleSidebar, onNewChat, onLoadSess
                       
                       {/* Session Info */}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-light-text dark:text-dark-text truncate group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors">
+                        <p className="text-sm font-medium text-light-text dark:text-dark-text truncate transition-colors">
                           {session.initialPrompt || 'Untitled Chat'}
                         </p>
                         <p className="text-xs text-light-text-dim dark:text-dark-text-dim mt-0.5">

@@ -9,28 +9,41 @@ function ChatPage({ uploadedImage: initialImage, initialPrompt, sessionData, onN
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [overlays, setOverlays] = useState(sessionData?.overlays || []);
   const [uploadedImage, setUploadedImage] = useState(initialImage);
+  // Track which session the current image belongs to so we know when to refetch
+  const [imageSessionId, setImageSessionId] = useState(sessionData?.sessionId || null);
   const [imageLoading, setImageLoading] = useState(false);
   const sidebarRef = useRef(null);
 
-  // Load image separately when session is loaded
+  // If we mount with a freshly uploaded preview, associate it with the session id
+  useEffect(() => {
+    if (sessionData?.sessionId && uploadedImage && !imageSessionId) {
+      setImageSessionId(sessionData.sessionId);
+    }
+  }, [sessionData?.sessionId, uploadedImage, imageSessionId]);
+
+  // Fetch image whenever switching to a different session that we don't have loaded
   useEffect(() => {
     const loadSessionImage = async () => {
-      if (sessionData?.sessionId) {
-        setImageLoading(true);
-        try {
-          const imageData = await api.getSessionImage(sessionData.sessionId);
-          setUploadedImage(imageData.imageUrl);
-          setOverlays(imageData.overlays || []);
-        } catch (error) {
-          console.error('Failed to load session image:', error);
-        } finally {
-          setImageLoading(false);
-        }
+      const targetSessionId = sessionData?.sessionId;
+      if (!targetSessionId) return;
+
+      // If we already have an image and it belongs to this session, skip
+      if (uploadedImage && imageSessionId === targetSessionId) return;
+
+      setImageLoading(true);
+      try {
+        const imageData = await api.getSessionImage(targetSessionId);
+        setUploadedImage(imageData.imageUrl);
+        setOverlays(imageData.overlays || []);
+        setImageSessionId(targetSessionId);
+      } catch (error) {
+        console.error('Failed to load session image:', error);
+      } finally {
+        setImageLoading(false);
       }
     };
-
     loadSessionImage();
-  }, [sessionData?.sessionId]);
+  }, [sessionData?.sessionId, uploadedImage, imageSessionId]);
 
   const handleMessageSent = (sessionId) => {
     if (sidebarRef.current) {
@@ -55,7 +68,7 @@ function ChatPage({ uploadedImage: initialImage, initialPrompt, sessionData, onN
         <main className="flex-1 flex h-[calc(100%-3rem)] overflow-hidden">
           {imageLoading ? (
             <div className="flex-1 flex items-center justify-center bg-light-panel dark:bg-dark-panel">
-              <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              <div className="w-8 h-8 border-2 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
             </div>
           ) : (
             <ImageViewer uploadedImage={uploadedImage} overlays={overlays} />

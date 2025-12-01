@@ -59,13 +59,13 @@ export default function LoginPage({ onNavigate, onBack }) {
             <div className="flex items-center p-1 rounded-full bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border">
               <button
                 onClick={() => toggleTheme('light')}
-                className={`p-1 px-3 rounded-full text-sm transition-colors ${theme === 'light' ? 'bg-white dark:bg-gray-700' : 'text-light-text-dim dark:text-dark-text-dim'}`}
+                className={`p-1 px-3 rounded-full text-sm transition-colors ${theme === 'light' ? 'bg-[var(--color-accent)] text-white' : 'text-light-text-dim dark:text-dark-text-dim'}`}
               >
                 Light
               </button>
               <button
                 onClick={() => toggleTheme('dark')}
-                className={`p-1 px-3 rounded-full text-sm transition-colors ${theme === 'dark' ? 'bg-black text-white' : 'text-light-text-dim dark:text-dark-text-dim'}`}
+                className={`p-1 px-3 rounded-full text-sm transition-colors ${theme === 'dark' ? 'bg-[var(--color-accent)] text-white' : 'text-light-text-dim dark:text-dark-text-dim'}`}
               >
                 Dark
               </button>
@@ -93,7 +93,7 @@ export default function LoginPage({ onNavigate, onBack }) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-4 py-2 rounded-md border bg-light-bg dark:bg-dark-bg border-light-border dark:border-dark-border text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 rounded-md border bg-light-bg dark:bg-dark-bg border-light-border dark:border-dark-border text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               placeholder="your@email.com"
             />
           </div>
@@ -108,7 +108,7 @@ export default function LoginPage({ onNavigate, onBack }) {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
-              className="w-full px-4 py-2 rounded-md border bg-light-bg dark:bg-dark-bg border-light-border dark:border-dark-border text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 rounded-md border bg-light-bg dark:bg-dark-bg border-light-border dark:border-dark-border text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               placeholder="••••••••"
             />
           </div>
@@ -119,7 +119,7 @@ export default function LoginPage({ onNavigate, onBack }) {
             className={`w-full py-2 px-4 rounded-md font-medium transition-colors ${
               loading
                 ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-blue-500 hover:bg-blue-600'
+                : 'bg-[var(--color-secondary)] hover:opacity-90'
             } text-white`}
           >
             {loading ? 'Loading...' : (isSignup ? 'Sign Up' : 'Log In')}
@@ -169,7 +169,7 @@ export default function LoginPage({ onNavigate, onBack }) {
           {isSignup ? 'Already have an account?' : "Don't have an account?"}{' '}
           <button
             onClick={() => setIsSignup(!isSignup)}
-            className="text-blue-500 hover:underline font-medium"
+            className="text-[var(--color-secondary)] hover:underline font-medium"
           >
             {isSignup ? 'Log In' : 'Sign Up'}
           </button>

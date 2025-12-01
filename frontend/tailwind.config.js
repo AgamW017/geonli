@@ -8,19 +8,21 @@ export default {
   theme: {
     extend: {
       colors: {
-        'light-bg': '#f3f3f3ff',
-        'light-panel': '#e2e7edff',
-        'light-text': '#1a2332',
-        'light-text-dim': '#5a6c84',
-        'light-border': '#d0dae8',
-        'light-accent': '#2563eb',
+        'light-bg': '#f5f9fbff',
+        'light-panel': '#edf3f5ff',
+        'light-text': '#0f172a',
+        'light-text-dim': '#475569',
+        'light-border': '#b0daff',
+        'light-accent': '#3375d2ff', // Blue
+        'light-secondary': '#fa5300ff', // Orange
         
-        'dark-bg': '#1b1d1fff',
-        'dark-panel': '#1f2531ff',
-        'dark-text': '#e6ecf5',
-        'dark-text-dim': '#8c9db5',
-        'dark-border': '#213c5eff',
-        'dark-accent': '#3b82f6',
+        'dark-bg': '#1a172eff',
+        'dark-panel': '#0e2b55ff',
+        'dark-text': '#f8fafcff',
+        'dark-text-dim': '#94a3b8',
+        'dark-border': '#1a8cd2ff',
+        'dark-accent': '#3b82f6', // Blue
+        'dark-secondary': '#ff5f0fff', // Orange
       },
       keyframes: {
         'fade-slide-in': {
