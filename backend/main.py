@@ -8,9 +8,10 @@ import os
 from datetime import datetime, timezone
 import uuid
 from dotenv import load_dotenv
-import firebase_admin
-from firebase_admin import credentials, auth
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Body
+import jwt
+from passlib.context import CryptContext
 from PIL import Image
 import io
 import base64
@@ -33,9 +34,10 @@ MONGODB_URL = os.getenv("MONGODB_URL")
 client = AsyncIOMotorClient(MONGODB_URL)
 db = client.geonli
 
-# Firebase Admin Configuration
-cred = credentials.Certificate(os.getenv("FIREBASE_CREDENTIALS_PATH"))
-firebase_admin.initialize_app(cred)
+# JWT / Auth Configuration
+JWT_SECRET = os.getenv("JWT_SECRET", "geonli")
+JWT_ALG = "HS256"
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Security
 security = HTTPBearer()
@@ -60,13 +62,21 @@ class Overlay(BaseModel):
     label: Optional[str] = None
     color: Optional[str] = None
 
+class SignupPayload(BaseModel):
+    email: str
+    password: str
+
+class LoginPayload(BaseModel):
+    email: str
+    password: str
+
 # Authentication Dependency
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
         token = credentials.credentials
-        decoded_token = auth.verify_id_token(token)
-        return decoded_token["uid"]
-    except Exception as e:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALG])
+        return payload.get("sub")
+    except Exception:
         raise HTTPException(status_code=401, detail="Invalid authentication token")
 
 # Optional Authentication Dependency for guest sessions
@@ -80,8 +90,8 @@ async def get_current_user_optional(request: Request, credentials: Optional[HTTP
         return None  # Guest user without id
     try:
         token = credentials.credentials
-        decoded_token = auth.verify_id_token(token)
-        return decoded_token["uid"]
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALG])
+        return payload.get("sub")
     except Exception:
         # Invalid token, try guest header
         guest_id = request.headers.get('X-Guest-Id')
@@ -147,6 +157,44 @@ def create_thumbnail(image_data: bytes, max_size: tuple = (150, 150)) -> str:
     # Convert to base64
     thumbnail_base64 = base64.b64encode(buffer.getvalue()).decode()
     return f"data:image/jpeg;base64,{thumbnail_base64}"
+
+def create_access_token(subject: str, expires_minutes: int = 60 * 24 * 30) -> str:
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": subject,
+        "iat": int(now.timestamp()),
+        "exp": int((now.timestamp()) + expires_minutes * 60),
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALG)
+
+async def get_user_by_email(email: str):
+    return await db.users.find_one({"email": email})
+
+@app.post("/api/auth/signup")
+async def signup(data: SignupPayload):
+    existing = await get_user_by_email(data.email)
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    hashed = pwd_context.hash(data.password)
+    user_id = str(uuid.uuid4())
+    await db.users.insert_one({
+        "_id": user_id,
+        "email": data.email,
+        "password_hash": hashed,
+        "createdAt": datetime.now(timezone.utc).isoformat()
+    })
+    token = create_access_token(user_id)
+    return {"token": token, "user": {"uid": user_id, "email": data.email}}
+
+@app.post("/api/auth/login")
+async def login(data: LoginPayload):
+    user = await get_user_by_email(data.email)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    if not pwd_context.verify(data.password, user.get("password_hash", "")):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    token = create_access_token(user["_id"])
+    return {"token": token, "user": {"uid": user["_id"], "email": user["email"]}}
 
 # API Endpoints
 
