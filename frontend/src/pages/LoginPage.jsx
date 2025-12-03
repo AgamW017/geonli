@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 
-export default function LoginPage({ onNavigate, onBack }) {
+export default function LoginPage({ onBack }) {
   const [isSignup, setIsSignup] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -111,9 +111,6 @@ export default function LoginPage({ onNavigate, onBack }) {
             {loading ? 'Loading...' : (isSignup ? 'Sign Up' : 'Log In')}
           </button>
         </form>
-
-        {/* Social login options removed */}
-
         <p className="mt-6 text-center text-sm text-light-text-dim dark:text-dark-text-dim">
           {isSignup ? 'Already have an account?' : "Don't have an account?"}{' '}
           <button

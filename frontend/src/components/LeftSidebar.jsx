@@ -114,9 +114,9 @@ const LeftSidebar = forwardRef(({ isOpen, onToggleSidebar, onNewChat, onLoadSess
           onClick={onNewChat}
           title="New Chat" 
           className={`flex items-center rounded-lg text-white bg-[var(--color-accent)] hover:opacity-90 transition-all duration-300 ease-in-out overflow-hidden
-            ${isOpen ? 'w-full gap-3 p-3' : 'rounded-full w-12 h-12 p-3'}`}
+            ${isOpen ? 'w-full gap-3 p-3' : 'rounded-full w-11 h-12 p-3'}`}
         >
-          <PlusIcon className="w-6 h-6 flex-shrink-0" />
+          <PlusIcon className="w-5 h-5 flex-shrink-0" />
           {isOpen && (
             <span className="font-medium whitespace-nowrap">
               New Chat

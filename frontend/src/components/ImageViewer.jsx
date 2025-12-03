@@ -51,7 +51,7 @@ function ImageViewer({ uploadedImage, overlays = [] }) {
   };
 
   // Child component that listens to transform changes and renders overlays
-  function OverlayLayer({ imageDimensions, overlays, colorizedOverlays, initialScale = 1 }) {
+  function OverlayLayer({ imageDimensions, colorizedOverlays, initialScale = 1 }) {
     const [scale, setScale] = useState(initialScale || 1);
 
     // This hook runs on every pan/zoom; ensures we get the latest scale
@@ -187,7 +187,7 @@ function ImageViewer({ uploadedImage, overlays = [] }) {
           centerOnInit={true} 
           wheel={{ step: 0.1 }}
         >
-          {({ zoomIn, zoomOut, resetTransform, state }) => (
+          {() => (
             <TransformComponent
               wrapperStyle={{ width: "100%", height: "100%", overflow: "hidden" }}
             >

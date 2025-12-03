@@ -23,14 +23,14 @@ app = FastAPI(title="GeoNLI API", version="1.0.0")
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # MongoDB Configuration
-MONGODB_URL = os.getenv("MONGODB_URL")
+MONGODB_URL = os.getenv("MONGODB_URL") or "mongodb://geonli_app:geonli_app_pw@localhost:27017/geonli?authSource=geonli"
 client = AsyncIOMotorClient(MONGODB_URL)
 db = client.geonli
 
