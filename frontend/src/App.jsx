@@ -22,7 +22,15 @@ function App() {
   }
 
   if (showLogin && !user) {
-    return <LoginPage onBack={() => setShowLogin(false)} />;
+    return <LoginPage onBack={() => setShowLogin(false)} onLoginSuccess={() => { 
+      // After successful auth, route to Upload page and clear any guest context
+      setShowLogin(false);
+      setUploadedImage(null);
+      setInitialPrompt('');
+      setSessionData(null);
+      setCurrentPage('upload');
+      setIsTransitioning(false);
+    }} />;
   }
 
   const handleUploadComplete = (image, prompt, response) => {

@@ -198,7 +198,7 @@ const LeftSidebar = forwardRef(({ isOpen, onToggleSidebar, onNewChat, onLoadSess
       <div className={`px-4 py-3 border-t border-light-border dark:border-dark-border flex-shrink-0`}
            style={{ marginTop: 'auto' }}>
         {user ? (
-          <div className={`h-8 flex items-center ${isOpen ? 'gap-2' : 'justify-center gap-2'}`}>
+          <div className={`h-10 flex items-center ${isOpen ? 'gap-2' : 'justify-center gap-2'}`}>
             {isOpen && (
               <span className="flex-1 min-w-0 text-sm text-light-text-dim dark:text-dark-text-dim truncate">
                 {user.email}
@@ -207,15 +207,15 @@ const LeftSidebar = forwardRef(({ isOpen, onToggleSidebar, onNewChat, onLoadSess
             <button
               onClick={logout}
               title="Logout"
-              className={`h-10 flex items-center rounded-md text-white bg-[var(--color-secondary)] hover:opacity-90 transition-all duration-300 ease-in-out overflow-hidden
-                ${isOpen ? 'px-3 py-1.5 gap-3' : 'rounded-full w-11 h-12 p-3 justify-center'}`}
+              className={`h-11 flex items-center rounded-md text-white bg-[var(--color-secondary)] hover:opacity-90 transition-all duration-300 ease-in-out overflow-hidden
+                ${isOpen ? 'px-3 py-1.5 gap-3' : 'rounded-full w-11 p-3'}`}
             >
-              <LogOutIcon className="w-6 h-6 flex-shrink-0" />
+              <LogOutIcon className="ml-0.5 w-6 h-6 flex-shrink-0" />
               {isOpen && <span className="font-medium whitespace-nowrap">Logout</span>}
             </button>
           </div>
         ) : (
-          <div className={`${isOpen ? 'block' : 'flex'}`}>
+          <div className={`h-10 mb-2 ${isOpen ? 'block' : 'flex'}`}>
             <button
               onClick={onShowLogin}
               title="Login"

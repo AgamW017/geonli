@@ -1,15 +1,19 @@
 import { useTheme } from '../contexts/ThemeContext';
+import logo from '../assets/logo.png';
 
 function Topbar() {
   const { theme, toggleTheme } = useTheme();
 
   return (
     <header className="flex-shrink-0 flex items-center justify-between h-14 px-4 sm:px-6 border-b border-light-border dark:border-dark-border">
-      <div>
-        <h1 className="text-xl font-bold">GeoNLI Image Chat</h1>
-        <p className="text-xs text-light-text-dim dark:text-dark-text-dim">
-          Describe and reason about satellite imagery with a conversational interface.
-        </p>
+      <div className="flex items-center gap-3">
+        <img src={logo} alt="Logo" className="w-15 h-12 rounded-md object-contain" />
+        <div className="leading-tight">
+          <h1 className="text-xl font-bold">GeoNLI Image Chat</h1>
+          <p className="text-xs text-light-text-dim dark:text-dark-text-dim">
+            Describe and reason about satellite imagery with a conversational interface.
+          </p>
+        </div>
       </div>
       
       <div className="flex items-center gap-4">

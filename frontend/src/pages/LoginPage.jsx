@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 
-export default function LoginPage({ onBack }) {
+export default function LoginPage({ onBack, onLoginSuccess }) {
   const [isSignup, setIsSignup] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,6 +22,7 @@ export default function LoginPage({ onBack }) {
       } else {
         await login(email, password);
       }
+      if (onLoginSuccess) onLoginSuccess();
     } catch (err) {
       setError(err.message || 'Authentication failed');
     } finally {
