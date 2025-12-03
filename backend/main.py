@@ -15,6 +15,7 @@ from passlib.context import CryptContext
 from PIL import Image
 import io
 import base64
+from pymongo.errors import DuplicateKeyError, OperationFailure, ServerSelectionTimeoutError
 
 load_dotenv()
 
@@ -172,19 +173,33 @@ async def get_user_by_email(email: str):
 
 @app.post("/api/auth/signup")
 async def signup(data: SignupPayload):
-    existing = await get_user_by_email(data.email)
-    if existing:
+    try:
+        existing = await get_user_by_email(data.email)
+        if existing:
+            raise HTTPException(status_code=400, detail="Email already registered")
+        hashed = pwd_context.hash(data.password)
+        user_id = str(uuid.uuid4())
+        await db.users.insert_one({
+            "_id": user_id,
+            "email": data.email,
+            "password_hash": hashed,
+            "createdAt": datetime.now(timezone.utc).isoformat()
+        })
+        token = create_access_token(user_id)
+        return {"token": token, "user": {"uid": user_id, "email": data.email}}
+    except DuplicateKeyError:
         raise HTTPException(status_code=400, detail="Email already registered")
-    hashed = pwd_context.hash(data.password)
-    user_id = str(uuid.uuid4())
-    await db.users.insert_one({
-        "_id": user_id,
-        "email": data.email,
-        "password_hash": hashed,
-        "createdAt": datetime.now(timezone.utc).isoformat()
-    })
-    token = create_access_token(user_id)
-    return {"token": token, "user": {"uid": user_id, "email": data.email}}
+    except OperationFailure as e:
+        # Surface auth vs generic DB errors more clearly
+        if getattr(e, 'code', None) == 18 or getattr(e, 'codeName', '') == 'AuthenticationFailed':
+            raise HTTPException(status_code=500, detail="Database authentication failed. Check Mongo credentials (MONGODB_URL).")
+        raise HTTPException(status_code=500, detail="Database operation failed.")
+    except ServerSelectionTimeoutError:
+        raise HTTPException(status_code=503, detail="Database unavailable. Please try again later.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/auth/login")
 async def login(data: LoginPayload):

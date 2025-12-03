@@ -60,6 +60,7 @@ function ChatPage({ uploadedImage: initialImage, initialPrompt, sessionData, onN
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         onNewChat={onNewChat}
         onLoadSession={onLoadSession}
+        onShowLogin={onShowLogin}
       />
 
       {/* Main Content Area */}

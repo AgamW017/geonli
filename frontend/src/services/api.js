@@ -41,8 +41,20 @@ apiClient.interceptors.response.use(
   }
 );
 
+// Token helpers for AuthContext
+const setToken = (token) => {
+  apiClient.defaults.headers.common.Authorization = `Bearer ${token}`;
+};
+
+const clearToken = () => {
+  delete apiClient.defaults.headers.common.Authorization;
+};
+
 // API methods
-export const api = {
+const api = {
+  client: apiClient,
+  setToken,
+  clearToken,
   uploadImage: async (imageFile, prompt = '') => {
     const formData = new FormData();
     formData.append('image', imageFile);
@@ -97,5 +109,5 @@ export const api = {
     return response.data;
   },
 };
-
-export default apiClient;
+export { api };
+export default api;

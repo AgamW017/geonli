@@ -1,13 +1,15 @@
-import { MenuIcon, PlusIcon, MessageSquareIcon } from './icons';
+import { MenuIcon, PlusIcon, MessageSquareIcon, UserIcon, LogOutIcon } from './icons';
 import { useState, useEffect, useImperativeHandle, forwardRef, useRef, useLayoutEffect } from 'react';
 import { api } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
-const LeftSidebar = forwardRef(({ isOpen, onToggleSidebar, onNewChat, onLoadSession }, ref) => {
+const LeftSidebar = forwardRef(({ isOpen, onToggleSidebar, onNewChat, onLoadSession, onShowLogin }, ref) => {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(false);
   const sessionRefs = useRef({});
   const prevPositions = useRef({});
   const isAnimating = useRef(false);
+  const { user, logout } = useAuth();
 
   useEffect(() => {
     loadSessions();
@@ -99,7 +101,7 @@ const LeftSidebar = forwardRef(({ isOpen, onToggleSidebar, onNewChat, onLoadSess
       className={`flex flex-col h-full bg-light-panel dark:bg-dark-panel border-r border-light-border dark:border-dark-border transition-all duration-300 ease-in-out overflow-x-hidden
         ${isOpen ? 'w-72' : 'w-20'}`}
     >
-      <div className="h-12 flex items-center px-4 border-b border-light-border dark:border-dark-border flex-shrink-0">
+      <div className="h-14 flex items-center px-4 border-b border-light-border dark:border-dark-border flex-shrink-0">
         <button 
           onClick={onToggleSidebar} 
           title="Toggle sidebar" 
@@ -110,12 +112,12 @@ const LeftSidebar = forwardRef(({ isOpen, onToggleSidebar, onNewChat, onLoadSess
       </div>
       
       <div className="mt-4 px-4 relative">
-        <button 
-          onClick={onNewChat}
-          title="New Chat" 
-          className={`flex items-center rounded-lg text-white bg-[var(--color-accent)] hover:opacity-90 transition-all duration-300 ease-in-out overflow-hidden
-            ${isOpen ? 'w-full gap-3 p-3' : 'rounded-full w-11 h-12 p-3'}`}
-        >
+            <button 
+              onClick={onNewChat}
+              title="New Chat" 
+              className={`flex items-center rounded-lg text-white bg-[var(--color-secondary)] hover:opacity-90 transition-all duration-300 ease-in-out overflow-hidden
+                ${isOpen ? 'w-full gap-3 p-3' : 'rounded-full w-11 h-12 p-3'}`}
+            >
           <PlusIcon className="w-5 h-5 flex-shrink-0" />
           {isOpen && (
             <span className="font-medium whitespace-nowrap">
@@ -191,6 +193,40 @@ const LeftSidebar = forwardRef(({ isOpen, onToggleSidebar, onNewChat, onLoadSess
             )}
           </div>
         </div>
+      </div>
+      {/* Footer: Auth controls at bottom */}
+      <div className={`px-4 py-3 border-t border-light-border dark:border-dark-border flex-shrink-0`}
+           style={{ marginTop: 'auto' }}>
+        {user ? (
+          <div className={`h-8 flex items-center ${isOpen ? 'gap-2' : 'justify-center gap-2'}`}>
+            {isOpen && (
+              <span className="flex-1 min-w-0 text-sm text-light-text-dim dark:text-dark-text-dim truncate">
+                {user.email}
+              </span>
+            )}
+            <button
+              onClick={logout}
+              title="Logout"
+              className={`h-10 flex items-center rounded-md text-white bg-[var(--color-secondary)] hover:opacity-90 transition-all duration-300 ease-in-out overflow-hidden
+                ${isOpen ? 'px-3 py-1.5 gap-3' : 'rounded-full w-11 h-12 p-3 justify-center'}`}
+            >
+              <LogOutIcon className="w-6 h-6 flex-shrink-0" />
+              {isOpen && <span className="font-medium whitespace-nowrap">Logout</span>}
+            </button>
+          </div>
+        ) : (
+          <div className={`${isOpen ? 'block' : 'flex'}`}>
+            <button
+              onClick={onShowLogin}
+              title="Login"
+              className={`flex items-center rounded-lg text-white bg-[var(--color-accent)] hover:opacity-90 transition-all duration-300 ease-in-out overflow-hidden
+                ${isOpen ? 'w-full gap-3 p-3' : 'rounded-full w-11 h-12 p-3'}`}
+            >
+              <UserIcon className="w-5 h-5 flex-shrink-0" />
+              {isOpen && <span className="font-medium whitespace-nowrap">Login</span>}
+            </button>
+          </div>
+        )}
       </div>
     </aside>
   );

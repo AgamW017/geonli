@@ -76,6 +76,7 @@ function UploadPage({ onUploadComplete, onLoadSession, onShowLogin }) {
           setError('');
         }}
         onLoadSession={onLoadSession}
+        onShowLogin={onShowLogin}
       />
 
       {/* Main Content Area */}

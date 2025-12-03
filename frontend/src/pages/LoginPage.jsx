@@ -32,10 +32,10 @@ export default function LoginPage({ onBack }) {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-light-bg dark:bg-dark-bg">
-      <div className="w-full max-w-md p-8 rounded-lg shadow-lg bg-white dark:bg-dark-panel">
+      <div className="w-full max-w-sm m-5 p-8 rounded-[30px] bg-white dark:bg-dark-panel shadow-[0_15px_30px_-20px_rgba(133,189,215,0.88)] dark:shadow-[0_20px_35px_-20px_rgba(80,160,220,0.35)] border border-white dark:border-[rgba(80,160,220,0.25)]">
         {/* Back and Theme Toggle */}
         <div className="flex justify-between items-center mb-4">
-          {onBack && (
+          {onBack && ( 
             <button
               onClick={onBack}
               className="text-sm text-light-text-dim dark:text-dark-text-dim hover:text-light-text dark:hover:text-dark-text transition-colors"
@@ -53,13 +53,13 @@ export default function LoginPage({ onBack }) {
             <button
               onClick={() => toggleTheme('dark')}
               className={`p-1 px-3 rounded-full text-sm transition-colors ${theme === 'dark' ? 'bg-[var(--color-accent)] text-white' : 'text-light-text-dim dark:text-dark-text-dim'}`}
-            >
+            >        
               Dark
             </button>
           </div>
         </div>
 
-        <h2 className="text-3xl font-bold text-center mb-6 text-light-text dark:text-dark-text">
+        <h2 className="text-3xl font-bold text-center mt-8 mb-6 text-light-text dark:text-dark-text">
           {isSignup ? 'Create Account' : 'Welcome Back'}
         </h2>
 
@@ -79,7 +79,7 @@ export default function LoginPage({ onBack }) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-4 py-2 rounded-md border bg-light-bg dark:bg-dark-bg border-light-border dark:border-dark-border text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+              className="w-full px-4 py-2 rounded-l border bg-light-bg dark:bg-dark-bg border-light-border dark:border-[rgba(80,160,220,0.25)] text-light-text dark:text-dark-text shadow-[0_5px_10px_-5px_#cff0ff] dark:shadow-[0_6px_12px_-6px_rgba(80,160,220,0.35)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               placeholder="your@email.com"
             />
           </div>
@@ -94,7 +94,7 @@ export default function LoginPage({ onBack }) {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
-              className="w-full px-4 py-2 rounded-md border bg-light-bg dark:bg-dark-bg border-light-border dark:border-dark-border text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+              className="w-full px-4 py-2 rounded-l border bg-light-bg dark:bg-dark-bg border-light-border dark:border-[rgba(80,160,220,0.25)] text-light-text dark:text-dark-text shadow-[0_5px_10px_-5px_#cff0ff] dark:shadow-[0_6px_12px_-6px_rgba(80,160,220,0.35)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               placeholder="••••••••"
             />
           </div>
@@ -102,11 +102,12 @@ export default function LoginPage({ onBack }) {
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-2 px-4 rounded-md font-medium transition-colors ${
+            className={`w-full py-2 px-4 rounded-l font-medium transition-all shadow-[0_15px_10px_-15px_rgba(133,189,215,0.88)] dark:shadow-[0_18px_12px_-14px_rgba(80,160,220,0.35)] ${
               loading
                 ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-[var(--color-secondary)] hover:opacity-90'
+                : 'bg-[var(--color-secondary)] hover:opacity-90 active:scale-95' 
             } text-white`}
+            style={{ marginTop: '1.5rem' }}
           >
             {loading ? 'Loading...' : (isSignup ? 'Sign Up' : 'Log In')}
           </button>

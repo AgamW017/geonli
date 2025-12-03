@@ -9,18 +9,18 @@ export default {
     extend: {
       colors: {
         'light-bg': '#f5f9fbff',
-        'light-panel': '#edf3f5ff',
+        'light-panel': '#e1eef2ff',
         'light-text': '#0f172a',
         'light-text-dim': '#475569',
         'light-border': '#b0daff',
         'light-accent': '#3375d2ff', // Blue
-        'light-secondary': '#fa5300ff', // Orange
+        'light-secondary': '#f85d0fff', // Orange
         
-        'dark-bg': '#1a172eff',
-        'dark-panel': '#0e2b55ff',
+        'dark-bg': '#12111eff',
+        'dark-panel': '#07113dff',
         'dark-text': '#f8fafcff',
         'dark-text-dim': '#94a3b8',
-        'dark-border': '#1a8cd2ff',
+        'dark-border': '#0075beff',
         'dark-accent': '#3b82f6', // Blue
         'dark-secondary': '#ff5f0fff', // Orange
       },
