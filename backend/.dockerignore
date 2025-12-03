@@ -1,0 +1,20 @@
+# Exclude local MongoDB data dir from Docker build context
+mongo-data/
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+
+# Node modules (if any mounted)
+node_modules/
+
+# Env files
+.env
+
+# VCS
+.git/
+.gitignore
+
+# Editor/OS files
+.DS_Store

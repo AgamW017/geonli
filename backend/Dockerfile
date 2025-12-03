@@ -1,4 +1,3 @@
-# Backend Dockerfile for airgapped local run
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -6,11 +5,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# System deps for Pillow
+# Runtime libs for Pillow (no compilers)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libjpeg-dev \
-    zlib1g-dev \
+    libjpeg62-turbo \
+    zlib1g \
  && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt /app/requirements.txt
