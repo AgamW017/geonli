@@ -8,9 +8,10 @@ import os
 from datetime import datetime, timezone
 import uuid
 from dotenv import load_dotenv
-import firebase_admin
-from firebase_admin import credentials, auth
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Body
+import jwt
+from passlib.context import CryptContext
 from PIL import Image
 import io
 import base64
@@ -20,6 +21,7 @@ import requests
 import json
 import re
 import math
+from pymongo.errors import DuplicateKeyError, OperationFailure, ServerSelectionTimeoutError
 
 load_dotenv()
 
@@ -37,20 +39,21 @@ app = FastAPI(title="GeoNLI API", version="1.0.0")
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # MongoDB Configuration
-MONGODB_URL = os.getenv("MONGODB_URL")
+MONGODB_URL = os.getenv("MONGODB_URL") or "mongodb://geonli_app:geonli_app_pw@localhost:27017/geonli?authSource=geonli"
 client = AsyncIOMotorClient(MONGODB_URL)
 db = client.geonli
 
-# Firebase Admin Configuration
-cred = credentials.Certificate(os.getenv("FIREBASE_CREDENTIALS_PATH"))
-firebase_admin.initialize_app(cred)
+# JWT / Auth Configuration
+JWT_SECRET = os.getenv("JWT_SECRET", "geonli")
+JWT_ALG = "HS256"
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Security
 security = HTTPBearer()
@@ -67,36 +70,38 @@ class CreateSession(BaseModel):
 
 class Overlay(BaseModel):
     id: str
-    type: str
-    x: float
-    y: float
+    type: str  # "box" or "pin"
+    # Axis-aligned rectangle (legacy)
+    x: Optional[float] = None
+    y: Optional[float] = None
     width: Optional[float] = None
     height: Optional[float] = None
+    # Oriented quadrilateral (x1,y1 ... x4,y4)
+    x1: Optional[float] = None
+    y1: Optional[float] = None
+    x2: Optional[float] = None
+    y2: Optional[float] = None
+    x3: Optional[float] = None
+    y3: Optional[float] = None
+    x4: Optional[float] = None
+    y4: Optional[float] = None
     label: Optional[str] = None
     color: Optional[str] = None
 
+class SignupPayload(BaseModel):
+    email: str
+    password: str
 
-class UserData(BaseModel):
-    name: str
-    age: int
-    message: str
+class LoginPayload(BaseModel):
+    email: str
+    password: str
 
-# --- 2. DEFINE THE ENDPOINT ---
-@app.post("/process-user-data")
-async def echo_data(data: UserData):
-    """
-    Reads the JSON sent by frontend and returns it exactly as is.
-    """
-    print(f"Received data: {data}")
-    return data 
-
-
-# --- Dependencies ---
+# Authentication Dependency
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
         token = credentials.credentials
-        decoded_token = auth.verify_id_token(token)
-        return decoded_token["uid"]
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALG])
+        return payload.get("sub")
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid authentication token")
 
@@ -107,8 +112,8 @@ async def get_current_user_optional(request: Request, credentials: Optional[HTTP
         return None
     try:
         token = credentials.credentials
-        decoded_token = auth.verify_id_token(token)
-        return decoded_token["uid"]
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALG])
+        return payload.get("sub")
     except Exception:
         guest_id = request.headers.get('X-Guest-Id')
         if guest_id: return f"guest:{guest_id}"
@@ -351,6 +356,64 @@ def convert_boxes_to_overlays(boxes, label, img_width, img_height):
                 "label": label,
                 "color": "#00FF00" 
             })
+def generate_mock_overlays() -> List[dict]:
+    """Generate random overlays including oriented quadrilateral boxes.
+    Boxes are returned with x1..y4 instead of legacy x,y,width,height.
+    Pins remain as simple x,y points.
+    """
+    import random
+    import math
+    overlays: List[dict] = []
+
+    def random_oriented_box() -> dict:
+        # Random center
+        cx = random.uniform(80, 520)
+        cy = random.uniform(80, 420)
+        # Random size
+        w = random.uniform(100, 250)
+        h = random.uniform(80, 200)
+        # Random orientation in radians
+        theta = math.radians(random.uniform(0, 180))
+        cos_t, sin_t = math.cos(theta), math.sin(theta)
+        hw, hh = w / 2.0, h / 2.0
+        corners = [
+            (-hw, -hh),  # top-left in local coords
+            ( hw, -hh),  # top-right
+            ( hw,  hh),  # bottom-right
+            (-hw,  hh),  # bottom-left
+        ]
+        rotated = []
+        for (x, y) in corners:
+            rx = cx + x * cos_t - y * sin_t
+            ry = cy + x * sin_t + y * cos_t
+            rotated.append((rx, ry))
+        (x1, y1), (x2, y2), (x3, y3), (x4, y4) = rotated
+        return {
+            "id": f"box-{uuid.uuid4().hex[:8]}",
+            "type": "box",
+            "x1": x1, "y1": y1,
+            "x2": x2, "y2": y2,
+            "x3": x3, "y3": y3,
+            "x4": x4, "y4": y4,
+            "label": random.choice(["Building", "Road", "Vegetation", "Water Body", "Structure"]),
+            "color": random.choice(["#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff"]),
+        }
+
+    # Random oriented boxes
+    for _ in range(random.randint(1, 3)):
+        overlays.append(random_oriented_box())
+
+    # Random pins
+    for _ in range(random.randint(1, 2)):
+        overlays.append({
+            "id": f"pin-{uuid.uuid4().hex[:8]}",
+            "type": "pin",
+            "x": random.uniform(100, 600),
+            "y": random.uniform(100, 500),
+            "label": random.choice(["POI", "Location", "Marker", "Point of Interest"]),
+            "color": random.choice(["#ff8800", "#00ffff", "#8800ff"]),
+        })
+
     return overlays
 
 import math
@@ -544,6 +607,59 @@ def get_image_dimensions(image_source):
         return 1000, 1000 # Fallback to prevent crash
 
 # --- API ENDPOINTS ---
+def create_access_token(subject: str, expires_minutes: int = 60 * 24 * 30) -> str:
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": subject,
+        "iat": int(now.timestamp()),
+        "exp": int((now.timestamp()) + expires_minutes * 60),
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALG)
+
+async def get_user_by_email(email: str):
+    return await db.users.find_one({"email": email})
+
+@app.post("/api/auth/signup")
+async def signup(data: SignupPayload):
+    try:
+        existing = await get_user_by_email(data.email)
+        if existing:
+            raise HTTPException(status_code=400, detail="Email already registered")
+        hashed = pwd_context.hash(data.password)
+        user_id = str(uuid.uuid4())
+        await db.users.insert_one({
+            "_id": user_id,
+            "email": data.email,
+            "password_hash": hashed,
+            "createdAt": datetime.now(timezone.utc).isoformat()
+        })
+        token = create_access_token(user_id)
+        return {"token": token, "user": {"uid": user_id, "email": data.email}}
+    except DuplicateKeyError:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    except OperationFailure as e:
+        # Surface auth vs generic DB errors more clearly
+        if getattr(e, 'code', None) == 18 or getattr(e, 'codeName', '') == 'AuthenticationFailed':
+            raise HTTPException(status_code=500, detail="Database authentication failed. Check Mongo credentials (MONGODB_URL).")
+        raise HTTPException(status_code=500, detail="Database operation failed.")
+    except ServerSelectionTimeoutError:
+        raise HTTPException(status_code=503, detail="Database unavailable. Please try again later.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/auth/login")
+async def login(data: LoginPayload):
+    user = await get_user_by_email(data.email)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    if not pwd_context.verify(data.password, user.get("password_hash", "")):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    token = create_access_token(user["_id"])
+    return {"token": token, "user": {"uid": user["_id"], "email": user["email"]}}
+
+# API Endpoints
 
 @app.get("/")
 async def root():

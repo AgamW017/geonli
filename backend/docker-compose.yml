@@ -1,0 +1,31 @@
+services:
+  mongo:
+    image: mongo:6
+    container_name: geonli-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: geonli
+      MONGO_INITDB_ROOT_PASSWORD: geonli
+    volumes:
+      - ./mongo-data:/data/db
+      - ./mongo-init:/docker-entrypoint-initdb.d
+
+  backend:
+    build: .
+    container_name: geonli-backend
+    restart: unless-stopped
+    environment:
+      MONGODB_URL: mongodb://geonli_app:geonli_app_pw@mongo:27017/geonli?authSource=geonli
+      JWT_SECRET: change_me_in_env
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mongo
+    volumes:
+      - .:/app
+
+volumes:
+  mongo-data:
+    driver: local

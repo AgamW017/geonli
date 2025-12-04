@@ -21,6 +21,8 @@ wheels/
 *.egg
 *.pyc
 
+mongo-data
+
 # Virtual Environment
 venv/
 env/
