@@ -154,13 +154,14 @@ def query_geospatial_model(image_source, prompt: str):
         if response.status_code == 200:
             resp_json = response.json()
             
+            # 1. Gradio API always wraps results in a "data" list
             if "data" in resp_json:
                 output_data = resp_json["data"][0]
                 
-                # --- 1. Handle File Path vs Direct Object ---
-                # Gradio might return a file path string or the direct dictionary
+                # 2. Handle File Path vs Direct Object
+                # (Gradio might return a file path if the JSON is large)
+                print(f"h004geo_output{output_data}",flush=True)
                 final_result = None
-                
                 if isinstance(output_data, str) and os.path.exists(output_data):
                     print(f"[GEO-SAM] 📂 Reading result from file: {output_data}", flush=True)
                     with open(output_data, 'r') as f:
@@ -168,28 +169,25 @@ def query_geospatial_model(image_source, prompt: str):
                 else:
                     final_result = output_data
                 
-                # --- 2. Extract Class and Boxes ---
-                # We expect final_result to be: {'detected_class': '...', 'boxes': [...]}
+                print(f"h005geo_output{final_result}",flush=True)
+                # 3. Extract the 'oriented_boxes' array
                 if isinstance(final_result, dict):
-                    detected_class = final_result.get("detected_class", prompt) # Fallback to prompt if key missing
-                    boxes = final_result.get("boxes", [])
-                    return detected_class, boxes
-                
-                # Fallback: If server sends just a list (Old format safety net)
-                elif isinstance(final_result, list):
-                    print("[GEO-SAM] ⚠️ Warning: Received list format. Using prompt as class.")
-                    return prompt, final_result
+                    # Use the exact key from your JSON: "oriented_boxes"
+                    all_boxes = final_result.get("oriented_boxes", [])
+                    myCls=final_result.get("detected_class")
+                    print(f"h006geo_output{all_boxes}",flush=True)
+                    return myCls,all_boxes  # Returns [[x1,y1...], [x1,y1...]]
                 
                 else:
-                    print("[GEO-SAM] ⚠️ Unknown data format received.")
-                    return None, []
+                    print("[GEO-SAM] ⚠️ Unknown data format received inside data[0].")
+                    return []
 
             else:
                 print("[GEO-SAM] ⚠️ Response missing 'data' key", flush=True)
-                return None, []
+                return []
         else:
             print(f"[GEO-SAM] ❌ Error: {response.text}", flush=True)
-            return None, []
+            return []
             
     except Exception as e:
         print(f"[GEO-SAM] ❌ Connection Failed: {str(e)}", flush=True)
@@ -310,8 +308,8 @@ def find_the_class(prompt: str):
 # --- MODIFIED CONVERTER: Percentage -> Pixels ---
 def convert_boxes_to_overlays(boxes, label, img_width, img_height):
     """
-    Converts SAM [x1, y1, x2, y2] (0-100 normalized) 
-    to App Overlays [{x, y, width, height, type='box'}] IN PIXELS
+    Converts SAM [x1, y1, x2, y2] or [x1,xy1,x2,y2,x3,y3,x4,y4] (normalized)
+    to App Overlays [{x, y, width, height, type='box'}] or [x1, y1, x2, y2] or [x1,xy1,x2,y2,x3,y3,x4,y4] IN PIXELS
     """
     overlays = []
     if not boxes: return overlays
@@ -320,25 +318,39 @@ def convert_boxes_to_overlays(boxes, label, img_width, img_height):
     
     for i, box in enumerate(boxes):
         # SAM format: [x_min, y_min, x_max, y_max] in Percentages (0-100)
-        p_x1, p_y1, p_x2, p_y2 = box
-        
-        # Calculate Pixels
-        pixel_x = (p_x1 / 100) * img_width
-        pixel_y = (p_y1 / 100) * img_height
-        
-        pixel_w = ((p_x2 - p_x1) / 100) * img_width
-        pixel_h = ((p_y2 - p_y1) / 100) * img_height
-        
-        overlays.append({
-            "id": str(uuid.uuid4()),
-            "type": "box",  # Matches your frontend expectation
-            "x": int(pixel_x),
-            "y": int(pixel_y),
-            "width": int(pixel_w),
-            "height": int(pixel_h),
-            "label": label,
-            "color": "#00FF00" 
-        })
+        if len(box) == 4:
+            # Calculate Pixels
+            pixel_x = (box[0] / 100) * img_width
+            pixel_y = (box[1] / 100) * img_height
+            
+            pixel_w = ((box[2] - box[0]) / 100) * img_width
+            pixel_h = ((box[3] - box[1]) / 100) * img_height
+            
+            overlays.append({
+                "id": str(uuid.uuid4()),
+                "type": "box",  # Matches your frontend expectation
+                "x": int(pixel_x),
+                "y": int(pixel_y),
+                "width": int(pixel_w),
+                "height": int(pixel_h),
+                "label": label,
+                "color": "#00FF00" 
+            })
+        elif len(box) == 8:
+            overlays.append({
+                "id": str(uuid.uuid4()),
+                "type": "box",  # Matches your frontend expectation
+                "x1": int((box[0] / 100)*img_width),
+                "y1": int((box[1] / 100)*img_height),
+                "x2": int((box[2] / 100)*img_width),
+                "y2": int((box[3] / 100)*img_height),
+                "x3": int((box[4] / 100)*img_width),
+                "y3": int((box[5] / 100)*img_height),
+                "x4": int((box[6] / 100)*img_width),
+                "y4": int((box[7] / 100)*img_height),
+                "label": label,
+                "color": "#00FF00" 
+            })
     return overlays
 
 import math
@@ -360,6 +372,12 @@ def get_one_overlay(overlays):
         cy = box['y'] + (box['height'] / 2)
         return cx, cy
 
+
+    def get_center_from_oriented_box(box):
+        cx = (box['x1'] + box['x2'] + box['x3'] +box['x4'])/4
+        cy = (box['y1'] + box['y2'] + box['y3'] +box['y4'])/4
+        return cx, cy
+    
     # 2. Extract Reference (First Box) & Candidates (The Rest)
     reference_box = overlays[0]
     remaining_boxes = overlays[1:]
@@ -371,7 +389,7 @@ def get_one_overlay(overlays):
     min_distance = float('inf')
 
     for box in remaining_boxes:
-        cx, cy = get_center(box)
+        cx, cy = get_center_from_oriented_box(box)
         
         # Euclidean Distance squared (faster and sufficient for comparison)
         dist_sq = (cx - ref_cx)**2 + (cy - ref_cy)**2
@@ -577,7 +595,8 @@ async def upload_image(
                 overlays = []
                 # Check for {<x><y><x><y>} pattern
                 if initial_response and "{" in initial_response and "<" in initial_response:
-                    overlays = extract_overlays_from_mgm_response(initial_response, img_w, img_h)
+                    # overlays = extract_overlays_from_mgm_response(initial_response, img_w, img_h)
+                    overlays=[]
                     # new_class=find_the_class(prompt)
                     # if new_class:
                     #     print(f"[HYBRID] Detected class '{new_class}', querying Geo-SAM...", flush=True)
@@ -588,6 +607,7 @@ async def upload_image(
                     new_bb_from_gc=query_geoChat_model(image_data, new_prompt_for_bb)
                     # new_bb_from_gc=new_bb_from_gc[0:-1]+">}"
                     new_bb_from_gc = fix_llm_bbox_output(new_bb_from_gc)
+
                     print(f"[CHAT] 👉 geoChat={new_bb_from_gc}", flush=True)
                     new_gc_overlay= extract_overlays_from_gc_response(new_bb_from_gc, img_w, img_h)
                     overlays.extend(new_gc_overlay)
@@ -597,8 +617,8 @@ async def upload_image(
                     
                     # --- FIX: Use extend to flatten the list ---
                     overlays.extend(sam_overlays)
-                    # if len(overlays) > 1:
-                    #     overlays = get_one_overlay(overlays)
+                    if len(overlays) > 1:
+                        overlays = get_one_overlay(overlays)
 
         else:
             overlays = generate_mock_overlays()
@@ -703,8 +723,8 @@ async def send_message(
                     if 'img_w' not in locals(): 
                         img_w, img_h = get_image_dimensions(image_to_process)
                         
-                    new_overlays = extract_overlays_from_mgm_response(ai_response, img_w, img_h)
-
+                    # new_overlays = extract_overlays_from_mgm_response(ai_response, img_w, img_h)
+                    new_overlays =[]
                     new_prompt_for_bb = "give bounding box for " + prompt
                     new_bb_from_gc=query_geoChat_model(image_to_process, new_prompt_for_bb)
                     # new_bb_from_gc=new_bb_from_gc[0:-1]+">}"
@@ -715,15 +735,20 @@ async def send_message(
                     # new_class=find_the_class(prompt)
                     # if new_class:
                     # print(f"[HYBRID] Detected class '{new_class}', querying Geo-SAM...", flush=True)
+                    print(f"h000{new_overlays}",flush=True)
                     new_cls,new_boxes = query_geospatial_model(image_to_process, prompt)
                     
+                    # print(new_boxes, new_overlays)
+                    print(f"h001{new_boxes}",flush=True)
                     # Convert new boxes to overlay format
                     sam_overlays = convert_boxes_to_overlays(new_boxes, new_cls, img_w, img_h)
                     
+                    print(f"h002{sam_overlays}",flush=True)
                     # --- FIX: Use extend to flatten the list ---
                     new_overlays.extend(sam_overlays)
-                    # if len(new_overlays) > 1:
-                    #     new_overlays = get_one_overlay(new_overlays)
+                    if len(new_overlays) > 1:
+                        new_overlays = get_one_overlay(new_overlays)
+                    print(f"new overlays:{new_overlays}", flush=True)
 
                 if new_overlays:
                     await db.images.update_one(
@@ -849,6 +874,26 @@ async def create_session(
     except Exception as e:
         print(f"[ERROR] create_session failed: {e}", flush=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/browser-test")
+def browser_test(name: str, age: int, message: str):
+    """
+    Allows testing via browser address bar using Query Parameters.
+    URL format: /browser-test?name=John&age=30&message=Hello
+    """
+    # Create the dictionary (JSON) to return
+    response_data = {
+        "status": "success",
+        "received_data": {
+            "name": name,
+            "age": age,
+            "message": message
+        },
+        "note": "This was a GET request directly from the browser!"
+    }
+    return response_data
+
 
 # ... (Keep get_chat_history, get_sessions, get_session_image, delete_session EXACTLY as they were) ...
 @app.get("/api/chat/{session_id}")

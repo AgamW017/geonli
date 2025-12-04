@@ -122,7 +122,12 @@ function ChatPanel({ initialPrompt, sessionData, onMessageSent, onOverlaysUpdate
     return (
         <aside className="flex flex-col h-full border-l border-light-border dark:border-dark-border transition-all duration-300 ease-in-out bg-light-panel dark:bg-dark-panel w-96 flex-shrink-0">
             {/* Chat Header */}
-            <div className="flex items-center justify-end h-16 px-4 border-b border-light-border dark:border-dark-border flex-shrink-0">
+            <div className="flex items-center justify-between h-16 px-4 border-b border-light-border dark:border-dark-border flex-shrink-0">
+                <div>
+                    <h3 className="text-lg font-semibold text-light-text dark:text-dark-text">Chat Assistant</h3>
+                    <p className="text-xs text-light-text-dim dark:text-dark-text-dim">Ask questions about the uploaded image</p>
+                </div>
+                {/* Right side reserved for future actions */}
             </div>
             
             {/* Chat Messages */}

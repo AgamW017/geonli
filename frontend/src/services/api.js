@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { auth } from '../config/firebase';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -11,27 +10,11 @@ const apiClient = axios.create({
 });
 apiClient.interceptors.request.use(
   async (config) => {
-    try {
-      const user = auth.currentUser;
-      if (user) {
-        const token = await user.getIdToken();
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-      // If no user, attach a persistent guest id
-      if (!user) {
-        const key = 'geonli_guest_id';
-        let guestId = localStorage.getItem(key);
-        if (!guestId) {
-          // Generate a simple UUID v4
-          guestId = ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
-            (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-          );
-          localStorage.setItem(key, guestId);
-        }
-        config.headers['X-Guest-Id'] = guestId;
-      }
-    } catch (error) {
-      // If auth fails, still proceed in guest mode
+    const token = localStorage.getItem('geonli_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      // Attach a persistent guest id
       const key = 'geonli_guest_id';
       let guestId = localStorage.getItem(key);
       if (!guestId) {
@@ -58,8 +41,20 @@ apiClient.interceptors.response.use(
   }
 );
 
+// Token helpers for AuthContext
+const setToken = (token) => {
+  apiClient.defaults.headers.common.Authorization = `Bearer ${token}`;
+};
+
+const clearToken = () => {
+  delete apiClient.defaults.headers.common.Authorization;
+};
+
 // API methods
-export const api = {
+const api = {
+  client: apiClient,
+  setToken,
+  clearToken,
   uploadImage: async (imageFile, prompt = '') => {
     const formData = new FormData();
     formData.append('image', imageFile);
@@ -114,5 +109,5 @@ export const api = {
     return response.data;
   },
 };
-
-export default apiClient;
+export { api };
+export default api;

@@ -7,7 +7,9 @@ export function ThemeProvider({ children }) {
     try {
       const stored = localStorage.getItem('geonli_theme');
       if (stored === 'light' || stored === 'dark') return stored;
-    } catch {}
+    } catch (e) {
+        console.error('Retrieving theme failed', e);
+    }
     return 'light';
   });
 
@@ -20,7 +22,9 @@ export function ThemeProvider({ children }) {
     }
     try {
       localStorage.setItem('geonli_theme', theme);
-    } catch {}
+    } catch (e) {
+      console.error('Storing theme failed', e);
+    }
   }, [theme]);
 
   const toggleTheme = (newTheme) => {

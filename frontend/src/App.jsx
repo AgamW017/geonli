@@ -2,12 +2,9 @@ import { useState } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import UploadPage from './pages/UploadPage';
 import ChatPage from './pages/ChatPage';
-import JsonProcessorPage from './pages/JsonProcessorPage'; // Import new page
 import LoginPage from './pages/LoginPage';
-import { Routes, Route, useLocation } from 'react-router-dom';
 
 function App() {
-  const location = useLocation();
   const { user, loading } = useAuth();
   const [currentPage, setCurrentPage] = useState('upload');
   const [uploadedImage, setUploadedImage] = useState(null);
@@ -25,7 +22,15 @@ function App() {
   }
 
   if (showLogin && !user) {
-    return <LoginPage onBack={() => setShowLogin(false)} />;
+    return <LoginPage onBack={() => setShowLogin(false)} onLoginSuccess={() => { 
+      // After successful auth, route to Upload page and clear any guest context
+      setShowLogin(false);
+      setUploadedImage(null);
+      setInitialPrompt('');
+      setSessionData(null);
+      setCurrentPage('upload');
+      setIsTransitioning(false);
+    }} />;
   }
 
   const handleUploadComplete = (image, prompt, response) => {
@@ -69,40 +74,30 @@ function App() {
 
   return (
     <div className="h-screen w-screen bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text font-sans">
-      <Routes>
-        {/* New Route for API Testing */}
-        <Route path="/process-user-data" element={<JsonProcessorPage />} />
-
-        {/* Default Home Route - Keeps your existing logic */}
-        <Route path="/" element={
-          <>
-            {currentPage === 'upload' && (
-              <div 
-                className={`h-full w-full transition-all duration-500 ease-in-out ${isTransitioning ? 'opacity-0 translate-y-[-20px]' : 'opacity-100 translate-y-0'}`}
-              >
-                <UploadPage 
-                  onUploadComplete={handleUploadComplete} 
-                  onLoadSession={handleLoadSession}
-                  onShowLogin={handleShowLogin}
-                />
-              </div>
-            )}
-            
-            {currentPage === 'chat' && (
-              <div className="transition-all duration-500 ease-in-out opacity-0 animate-fade-slide-in">
-                <ChatPage 
-                  uploadedImage={uploadedImage} 
-                  initialPrompt={initialPrompt} 
-                  sessionData={sessionData}
-                  onNewChat={handleNewChat}
-                  onLoadSession={handleLoadSession}
-                  onShowLogin={handleShowLogin}
-                />
-              </div>
-            )}
-          </>
-        } />
-      </Routes>
+      {currentPage === 'upload' && (
+        <div 
+          className={`h-full w-full transition-all duration-500 ease-in-out ${isTransitioning ? 'opacity-0 translate-y-[-20px]' : 'opacity-100 translate-y-0'}`}
+        >
+          <UploadPage 
+            onUploadComplete={handleUploadComplete} 
+            onLoadSession={handleLoadSession}
+            onShowLogin={handleShowLogin}
+          />
+        </div>
+      )}
+      
+      {currentPage === 'chat' && (
+         <div className="transition-all duration-500 ease-in-out opacity-0 animate-fade-slide-in">
+          <ChatPage 
+            uploadedImage={uploadedImage} 
+            initialPrompt={initialPrompt} 
+            sessionData={sessionData}
+            onNewChat={handleNewChat}
+            onLoadSession={handleLoadSession}
+            onShowLogin={handleShowLogin}
+          />
+        </div>
+      )}
     </div>
   );
 }
