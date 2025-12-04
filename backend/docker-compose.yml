@@ -20,7 +20,7 @@ services:
       MONGODB_URL: mongodb://geonli_app:geonli_app_pw@mongo:27017/geonli?authSource=geonli
       JWT_SECRET: change_me_in_env
     ports:
-      - "8000:8000"
+      - "1000:8000"
     depends_on:
       - mongo
     volumes:

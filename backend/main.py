@@ -266,12 +266,12 @@ def query_geoChat_model(image_source, prompt: str):
 
     try:
         # response = requests.post("http://127.0.0.1:7860/api/predict", json=payload, timeout=60)
-        response = requests.post("http://localhost:2400/api/predict", json=payload, timeout=60)
+        response = requests.post("http://172.17.0.1:24001/api/predict", json=payload, timeout=60)
         if response.status_code == 200: return response.json()['data'][0]
         
         if response.status_code == 404:
             # response = requests.post("http://127.0.0.1:7860/run/predict", json=payload, timeout=60)
-            response = requests.post("http://localhost:24001/run/predict", json=payload, timeout=60)
+            response = requests.post("http://172.17.0.1:24001/run/predict", json=payload, timeout=60)
             if response.status_code == 200: return response.json()['data'][0]
 
         return f"Error from AI Server: {response.status_code}"
@@ -702,30 +702,47 @@ async def eval_endpoint(payload: EvalRequest):
         img_w = payload.input_image.metadata.width
         img_h = payload.input_image.metadata.height
         
-        
+        tem_bin_desc=query_geoChat_model(image_bytes,payload.queries.caption_query.instruction)
         
         caption_result = {
             "instruction": payload.queries.caption_query.instruction,
-            "response": "Text-based description placeholder.",
+            "response": tem_bin_desc,
         }
-
+        new_cls,new_boxes = query_geospatial_model(image_bytes, payload.queries.grounding_query.instruction)
+        
+        resp = []
+        for i, box in enumerate(new_boxes):
+            resp.append({
+                "object-id": i,
+                "obbox": [i/100 for i in box]
+            })
         grounding_result = {
             "instruction": payload.queries.grounding_query.instruction,
-            "response": []
+            "response": resp
         }
+
+        temp_bin_ques=payload.queries.attribute_query.binary.instruction
+        temp_bin_ques="give Yes or No "+temp_bin_ques
+        temp_bin_ans=query_geoChat_model(image_bytes,temp_bin_ques)
+
+        temp_bin_num=payload.queries.attribute_query.numeric.instruction
+        temp_bin_num="Give Floating Point Number of "+temp_bin_num
+        temp_bin_num=query_geoChat_model(image_bytes,temp_bin_num)
+
+        temp_bin_sem=query_geoChat_model(image_bytes,payload.queries.attribute_query.semantic.instruction)
 
         attribute_result = {
             "binary": {
                 "instruction": payload.queries.attribute_query.binary.instruction,
-                "response": "Unknown"
+                "response": temp_bin_ans
             },
             "numeric": {
                 "instruction": payload.queries.attribute_query.numeric.instruction,
-                "response": None
+                "response": float(temp_bin_num)
             },
             "semantic": {
                 "instruction": payload.queries.attribute_query.semantic.instruction,
-                "response": "Not implemented"
+                "response": temp_bin_sem
             }
         }
 
@@ -806,6 +823,7 @@ async def upload_image(
 
                     new_prompt_for_bb = "give bounding box for " + prompt
                     new_bb_from_gc=query_geoChat_model(image_data, new_prompt_for_bb)
+                    print(f"[CHAT] 👉 geoChat before processing ={new_bb_from_gc}", flush=True)
                     # new_bb_from_gc=new_bb_from_gc[0:-1]+">}"
                     new_bb_from_gc = fix_llm_bbox_output(new_bb_from_gc)
 
@@ -930,6 +948,7 @@ async def send_message(
                     new_prompt_for_bb = "give bounding box for " + prompt
                     new_bb_from_gc=query_geoChat_model(image_to_process, new_prompt_for_bb)
                     # new_bb_from_gc=new_bb_from_gc[0:-1]+">}"
+                    print(f"[CHAT] 👉 geoChat before processing={new_bb_from_gc}", flush=True)
                     new_bb_from_gc = fix_llm_bbox_output(new_bb_from_gc)
                     print(f"[CHAT] 👉 geoChat={new_bb_from_gc}", flush=True)
                     new_gc_overlay= extract_overlays_from_gc_response(new_bb_from_gc, img_w, img_h)
@@ -1039,8 +1058,8 @@ async def create_session(
                 
                 # --- FIX: Use extend to flatten the list ---
                  overlays.extend(sam_overlays)
-                #  if len(overlays) > 1:
-                #     overlays = get_one_overlay(overlays)
+                 if len(overlays) > 1:
+                    overlays = get_one_overlay(overlays)
                         
         messages_to_insert = [
             { "messageId": str(uuid.uuid4()), "sessionId": session_id, "from": "user", "text": prompt, "timestamp": datetime.now(timezone.utc).isoformat() },
