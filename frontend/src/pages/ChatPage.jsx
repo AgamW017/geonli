@@ -53,18 +53,16 @@ function ChatPage({ uploadedImage: initialImage, initialPrompt, sessionData, onN
     }
   };
 
-  // React to auth changes: after logout, go to Upload and refresh sessions
+  const prevUserRef = useRef(user);
   useEffect(() => {
-    if (!user) {
-      // Refresh sidebar sessions to reflect guest mode
+    const prev = prevUserRef.current;
+    if (prev && !user) {
       sidebarRef.current?.refreshSessions?.();
-      // Route to Upload page and clear chat via parent handler
       onNewChat?.();
-    } else {
-      // On login, refresh sessions for authenticated user
+    } else if (!prev && user) {
       sidebarRef.current?.refreshSessions?.();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    prevUserRef.current = user;
   }, [user]);
 
   return (

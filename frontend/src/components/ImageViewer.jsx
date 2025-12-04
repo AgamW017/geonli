@@ -43,7 +43,6 @@ function ImageViewer({ uploadedImage, overlays = [] }) {
       const x = (clientWidth - naturalWidth * scale) / 2;
       const y = (clientHeight - naturalHeight * scale) / 2;
 
-      // Prevent infinite loop: only set if we haven't calculated it yet
       if (!initialConfig) {
         setInitialConfig({ scale, x, y });
       }
@@ -53,8 +52,6 @@ function ImageViewer({ uploadedImage, overlays = [] }) {
   // Child component that listens to transform changes and renders overlays
   function OverlayLayer({ imageDimensions, colorizedOverlays, initialScale = 1 }) {
     const [scale, setScale] = useState(initialScale || 1);
-
-    // This hook runs on every pan/zoom; ensures we get the latest scale
     useTransformEffect(({ state }) => {
       if (state?.scale) setScale(state.scale);
     });
@@ -63,7 +60,6 @@ function ImageViewer({ uploadedImage, overlays = [] }) {
       if (initialScale && initialScale !== scale) {
         setScale(initialScale);
       }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [initialScale]);
 
     if (imageDimensions.width === 0) return null;
@@ -90,6 +86,49 @@ function ImageViewer({ uploadedImage, overlays = [] }) {
           };
 
           if (overlay.type === 'box') {
+            const hasQuad = ['x1','y1','x2','y2','x3','y3','x4','y4'].every(k => overlay[k] !== undefined && overlay[k] !== null);
+            if (hasQuad) {
+              const pts = [
+                [overlay.x1, overlay.y1],
+                [overlay.x2, overlay.y2],
+                [overlay.x3, overlay.y3],
+                [overlay.x4, overlay.y4],
+              ];
+              const pointsAttr = pts.map(p => p.join(',')).join(' ');
+              const avgX = (overlay.x1 + overlay.x2 + overlay.x3 + overlay.x4) / 4;
+              const minY = Math.min(overlay.y1, overlay.y2, overlay.y3, overlay.y4);
+              return (
+                <g key={overlay.id}>
+                  {/* Click hit area */}
+                  <polygon
+                    points={pointsAttr}
+                    fill="transparent"
+                    style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+                    onClick={(e) => { e.stopPropagation()}}
+                  />
+                  <polygon
+                    points={pointsAttr}
+                    fill="none"
+                    stroke={overlay.color || 'var(--color-secondary)'}
+                    strokeWidth={styles.strokeWidth}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  {overlay.label && (
+                    <text
+                      x={avgX}
+                      y={minY - styles.textOffsetBox}
+                      textAnchor="middle"
+                      fill={overlay.color || 'var(--color-secondary)'}
+                      fontSize={styles.fontSize}
+                      fontWeight="600"
+                    >
+                      {overlay.label}
+                    </text>
+                  )}
+                </g>
+              );
+            }
             return (
               <g key={overlay.id}>
                 <rect
@@ -99,28 +138,28 @@ function ImageViewer({ uploadedImage, overlays = [] }) {
                   height={overlay.height + (styles.boxHitPadding * 2)}
                   fill="transparent"
                   style={{ pointerEvents: 'auto', cursor: 'pointer' }}
-                  onClick={(e) => { e.stopPropagation(); console.log(`Clicked box ${overlay.id}`)}}
+                  onClick={(e) => { e.stopPropagation() }}
                 />
                 <rect
-                    x={overlay.x}
-                    y={overlay.y}
-                    width={overlay.width}
-                    height={overlay.height}
-                    fill="none"
-                    stroke={overlay.color || 'var(--color-secondary)'}
-                    strokeWidth={styles.strokeWidth}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  {overlay.label && (
-                    <text
-                      x={overlay.x + overlay.width / 2}
-                      y={overlay.y - styles.textOffsetBox}
-                      textAnchor="middle"
-                      fill={overlay.color || 'var(--color-secondary)'}
-                      fontSize={styles.fontSize}
-                      fontWeight="600"
-                    >
+                  x={overlay.x}
+                  y={overlay.y}
+                  width={overlay.width}
+                  height={overlay.height}
+                  fill="none"
+                  stroke={overlay.color || 'var(--color-secondary)'}
+                  strokeWidth={styles.strokeWidth}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                {overlay.label && (
+                  <text
+                    x={overlay.x + overlay.width / 2}
+                    y={overlay.y - styles.textOffsetBox}
+                    textAnchor="middle"
+                    fill={overlay.color || 'var(--color-secondary)'}
+                    fontSize={styles.fontSize}
+                    fontWeight="600"
+                  >
                     {overlay.label}
                   </text>
                 )}
@@ -136,7 +175,7 @@ function ImageViewer({ uploadedImage, overlays = [] }) {
                   r={styles.pinHitRadius}
                   fill="transparent"
                   style={{ pointerEvents: 'auto', cursor: 'pointer' }}
-                  onClick={(e) => { e.stopPropagation(); console.log(`Clicked pin ${overlay.id}`)}}
+                  onClick={(e) => { e.stopPropagation();}}
                 />
                 <circle
                   cx={overlay.x}
@@ -174,7 +213,6 @@ function ImageViewer({ uploadedImage, overlays = [] }) {
       >
         <TransformWrapper
           ref={transformComponentRef}
-          // Key change forces re-render when config is ready
           key={initialConfig ? "loaded" : "loading"} 
           initialScale={initialConfig ? initialConfig.scale : 1}
           initialPositionX={initialConfig ? initialConfig.x : 0}

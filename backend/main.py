@@ -56,10 +56,20 @@ class CreateSession(BaseModel):
 class Overlay(BaseModel):
     id: str
     type: str  # "box" or "pin"
-    x: float
-    y: float
+    # Axis-aligned rectangle (legacy)
+    x: Optional[float] = None
+    y: Optional[float] = None
     width: Optional[float] = None
     height: Optional[float] = None
+    # Oriented quadrilateral (x1,y1 ... x4,y4)
+    x1: Optional[float] = None
+    y1: Optional[float] = None
+    x2: Optional[float] = None
+    y2: Optional[float] = None
+    x3: Optional[float] = None
+    y3: Optional[float] = None
+    x4: Optional[float] = None
+    y4: Optional[float] = None
     label: Optional[str] = None
     color: Optional[str] = None
 
@@ -111,33 +121,63 @@ def generate_mock_ai_response(prompt: str) -> str:
     return random.choice(responses)
 
 def generate_mock_overlays() -> List[dict]:
+    """Generate random overlays including oriented quadrilateral boxes.
+    Boxes are returned with x1..y4 instead of legacy x,y,width,height.
+    Pins remain as simple x,y points.
+    """
     import random
-    overlays = []
-    
-    # Random boxes
-    for i in range(random.randint(1, 3)):
-        overlays.append({
+    import math
+    overlays: List[dict] = []
+
+    def random_oriented_box() -> dict:
+        # Random center
+        cx = random.uniform(80, 520)
+        cy = random.uniform(80, 420)
+        # Random size
+        w = random.uniform(100, 250)
+        h = random.uniform(80, 200)
+        # Random orientation in radians
+        theta = math.radians(random.uniform(0, 180))
+        cos_t, sin_t = math.cos(theta), math.sin(theta)
+        hw, hh = w / 2.0, h / 2.0
+        corners = [
+            (-hw, -hh),  # top-left in local coords
+            ( hw, -hh),  # top-right
+            ( hw,  hh),  # bottom-right
+            (-hw,  hh),  # bottom-left
+        ]
+        rotated = []
+        for (x, y) in corners:
+            rx = cx + x * cos_t - y * sin_t
+            ry = cy + x * sin_t + y * cos_t
+            rotated.append((rx, ry))
+        (x1, y1), (x2, y2), (x3, y3), (x4, y4) = rotated
+        return {
             "id": f"box-{uuid.uuid4().hex[:8]}",
             "type": "box",
-            "x": random.randint(50, 500),
-            "y": random.randint(50, 400),
-            "width": random.randint(100, 250),
-            "height": random.randint(80, 200),
+            "x1": x1, "y1": y1,
+            "x2": x2, "y2": y2,
+            "x3": x3, "y3": y3,
+            "x4": x4, "y4": y4,
             "label": random.choice(["Building", "Road", "Vegetation", "Water Body", "Structure"]),
-            "color": random.choice(["#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff"])
-        })
-    
+            "color": random.choice(["#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff"]),
+        }
+
+    # Random oriented boxes
+    for _ in range(random.randint(1, 3)):
+        overlays.append(random_oriented_box())
+
     # Random pins
-    for i in range(random.randint(1, 2)):
+    for _ in range(random.randint(1, 2)):
         overlays.append({
             "id": f"pin-{uuid.uuid4().hex[:8]}",
             "type": "pin",
-            "x": random.randint(100, 600),
-            "y": random.randint(100, 500),
+            "x": random.uniform(100, 600),
+            "y": random.uniform(100, 500),
             "label": random.choice(["POI", "Location", "Marker", "Point of Interest"]),
-            "color": random.choice(["#ff8800", "#00ffff", "#8800ff"])
+            "color": random.choice(["#ff8800", "#00ffff", "#8800ff"]),
         })
-    
+
     return overlays
 
 def create_thumbnail(image_data: bytes, max_size: tuple = (150, 150)) -> str:
