@@ -1,6 +1,7 @@
 from fastapi import FastAPI, File, UploadFile, Depends, HTTPException, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel
 from typing import Optional, List
@@ -13,6 +14,7 @@ from fastapi import Body
 import jwt
 from passlib.context import CryptContext
 from PIL import Image
+from PIL import ImageDraw
 import io
 import base64
 import tempfile
@@ -582,6 +584,48 @@ def create_thumbnail(image_data: bytes, max_size: tuple = (150, 150)) -> str:
     thumbnail_base64 = base64.b64encode(buffer.getvalue()).decode()
     return f"data:image/jpeg;base64,{thumbnail_base64}"
 
+def draw_polygons_and_save(image_bytes: bytes, boxes: List[List[float]], img_w: int, img_h: int, image_id: str, out_dir: str = "static") -> str:
+    """
+    Draws 8-value clockwise polygons (percent coords) on the image and saves it.
+    - boxes: each as [x1,y1,x2,y2,x3,y3,x4,y4] in percent (0-100)
+    - img_w/img_h: expected dimensions; used to convert percent → pixels
+    - returns the output filename (not URL)
+    """
+    # Ensure output directory exists
+    os.makedirs(out_dir, exist_ok=True)
+
+    img = Image.open(io.BytesIO(image_bytes))
+    # If provided dimensions differ, trust actual image size
+    actual_w, actual_h = img.size
+    if not img_w or not img_h:
+        img_w, img_h = actual_w, actual_h
+
+    draw = ImageDraw.Draw(img)
+    # Style
+    outline = (255, 0, 0)
+    width = max(1, int(min(actual_w, actual_h) * 0.002))
+
+    for box in boxes:
+        if not isinstance(box, (list, tuple)) or len(box) != 8:
+            continue
+        pts = [
+            (int((box[0] / 100.0) * img_w), int((box[1] / 100.0) * img_h)),
+            (int((box[2] / 100.0) * img_w), int((box[3] / 100.0) * img_h)),
+            (int((box[4] / 100.0) * img_w), int((box[5] / 100.0) * img_h)),
+            (int((box[6] / 100.0) * img_w), int((box[7] / 100.0) * img_h)),
+        ]
+        # Close polygon by repeating first point
+        draw.line(pts + [pts[0]], fill=outline, width=width)
+
+    # Save file as imageid-uuid.png
+    fname = f"{image_id}-{uuid.uuid4().hex}.png"
+    out_path = os.path.join(out_dir, fname)
+    # Always save RGB
+    if img.mode != "RGB":
+        img = img.convert("RGB")
+    img.save(out_path, format="PNG")
+    return fname
+
 def fix_llm_bbox_output(text_output):
     """
     Extracts the first 4 numbers from any string and formats them
@@ -681,6 +725,7 @@ async def login(data: LoginPayload):
 async def root():
     return {"message": "GeoNLI API is running", "version": "1.0.0"}
 
+app.mount("/images", StaticFiles(directory="static"), name="images")
 @app.post("/eval")
 async def eval_endpoint(payload: EvalRequest):
     """
@@ -709,7 +754,24 @@ async def eval_endpoint(payload: EvalRequest):
             "response": tem_bin_desc,
         }
         new_cls,new_boxes = query_geospatial_model(image_bytes, payload.queries.grounding_query.instruction)
-        
+
+        # Draw polygons and save to static with name imageid-random_uuid
+        final_url = ""
+        try:
+            saved_fname = draw_polygons_and_save(
+                image_bytes=image_bytes,
+                boxes=new_boxes or [],
+                img_w=img_w,
+                img_h=img_h,
+                image_id=image_id,
+                out_dir="static",
+            )
+            # Served via /images mount
+            final_url = f"https://gore-talked-inches-mailman.trycloudflare.com/images/{saved_fname}"
+        except Exception as e:
+            print(f"[EVAL] Polygon draw/save failed: {e}", flush=True)
+            final_url = ""
+
         resp = []
         for i, box in enumerate(new_boxes):
             resp.append({
@@ -751,6 +813,7 @@ async def eval_endpoint(payload: EvalRequest):
             content={
                 "image": {
                     "image_id": image_id,
+                    "image_url": final_url,
                     "dimensions": {"width": img_w, "height": img_h},
                     "spatial_resolution_m": payload.input_image.metadata.spatial_resolution_m,
                 },
@@ -758,7 +821,8 @@ async def eval_endpoint(payload: EvalRequest):
                     "caption_query": caption_result,
                     "grounding_query": grounding_result,
                     "attribute_query": attribute_result
-                }
+                },
+                "finalurl": final_url,
             }
         )
     except HTTPException:
