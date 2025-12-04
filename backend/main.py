@@ -141,7 +141,7 @@ def query_geospatial_model(image_source, prompt: str):
     """
     Sends image to SAM-Geo container (Port 2422) and returns (Class Name, Bounding Boxes).
     """
-    url = "http://localhost:2422/run/predict"
+    url = "http://172.26.0.251:2422/run/predict"
     
     print(f"\n[GEO-SAM] 🚀 Preparing Request to: {url}", flush=True)
     
@@ -205,12 +205,12 @@ def query_mgm_model(image_source, prompt: str):
     payload = {"data": [base64_image, prompt]}
 
     try:
-        response = requests.post("http://127.0.0.1:7860/api/predict", json=payload, timeout=60)
+        response = requests.post("http://172.26.0.251:7860/api/predict", json=payload, timeout=60)
         # response = requests.post("http://127.0.0.1:24001/api/predict", json=payload, timeout=60)
         if response.status_code == 200: return response.json()['data'][0]
         
         if response.status_code == 404:
-            response = requests.post("http://127.0.0.1:7860/run/predict", json=payload, timeout=60)
+            response = requests.post("http://172.26.0.251:7860/run/predict", json=payload, timeout=60)
             # response = requests.post("http://127.0.0.1:24001/run/predict", json=payload, timeout=60)
             if response.status_code == 200: return response.json()['data'][0]
 
@@ -226,12 +226,12 @@ def query_geoChat_model(image_source, prompt: str):
 
     try:
         # response = requests.post("http://127.0.0.1:7860/api/predict", json=payload, timeout=60)
-        response = requests.post("http://127.0.0.1:24001/api/predict", json=payload, timeout=60)
+        response = requests.post("http://localhost:2400/api/predict", json=payload, timeout=60)
         if response.status_code == 200: return response.json()['data'][0]
         
         if response.status_code == 404:
             # response = requests.post("http://127.0.0.1:7860/run/predict", json=payload, timeout=60)
-            response = requests.post("http://127.0.0.1:24001/run/predict", json=payload, timeout=60)
+            response = requests.post("http://localhost:24001/run/predict", json=payload, timeout=60)
             if response.status_code == 200: return response.json()['data'][0]
 
         return f"Error from AI Server: {response.status_code}"
@@ -319,6 +319,7 @@ def convert_boxes_to_overlays(boxes, label, img_width, img_height):
     overlays = []
     if not boxes: return overlays
     
+    print(f"h007{boxes}",flush=True)
     print(f"[CONVERTER] Converting for Image Size: {img_width}x{img_height} pixels", flush=True)
     
     for i, box in enumerate(boxes):
@@ -356,6 +357,8 @@ def convert_boxes_to_overlays(boxes, label, img_width, img_height):
                 "label": label,
                 "color": "#00FF00" 
             })
+    return overlays
+
 def generate_mock_overlays() -> List[dict]:
     """Generate random overlays including oriented quadrilateral boxes.
     Boxes are returned with x1..y4 instead of legacy x,y,width,height.
@@ -823,6 +826,7 @@ async def send_message(
                 # Convert to Pixels
                 new_overlays = convert_boxes_to_overlays(boxes, new_cls, img_w, img_h)
                 
+                print(f"h008{new_overlays}",flush=True)
                 count = len(new_overlays)
                 ai_response = f"Found {count} instances of '{new_cls}'."
                 
