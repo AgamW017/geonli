@@ -96,6 +96,46 @@ class LoginPayload(BaseModel):
     email: str
     password: str
 
+# --- Eval Request Models ---
+class InputImageMetadata(BaseModel):
+    width: int
+    height: int
+    spatial_resolution_m: float
+
+class InputImage(BaseModel):
+    image_id: str
+    image_url: str
+    metadata: InputImageMetadata
+
+class CaptionQuery(BaseModel):
+    instruction: str
+
+class GroundingQuery(BaseModel):
+    instruction: str
+
+class AttributeBinary(BaseModel):
+    instruction: str
+
+class AttributeNumeric(BaseModel):
+    instruction: str
+
+class AttributeSemantic(BaseModel):
+    instruction: str
+
+class AttributeQuery(BaseModel):
+    binary: AttributeBinary
+    numeric: AttributeNumeric
+    semantic: AttributeSemantic
+
+class EvalQueries(BaseModel):
+    caption_query: CaptionQuery
+    grounding_query: GroundingQuery
+    attribute_query: AttributeQuery
+
+class EvalRequest(BaseModel):
+    input_image: InputImage
+    queries: EvalQueries
+
 # Authentication Dependency
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
@@ -531,33 +571,6 @@ def extract_overlays_from_mgm_response(response_text, img_w, img_h):
     # Reuse your existing converter (it handles % -> pixel math)
     return convert_boxes_to_overlays(sam_style_boxes, "MGM Detection", img_w, img_h)
 
-def generate_mock_overlays(img_width=800, img_height=600) -> List[dict]:
-    """
-    Generates a single fixed box in the center of the image.
-    Defaults to 800x600 if dimensions are not provided.
-    """
-    import uuid
-    
-    # 1. Define the Fixed Box Size
-    box_w = 200
-    box_h = 200
-    
-    # 2. Calculate Center Coordinates
-    # Center X = (Image Width / 2) - (Box Width / 2)
-    center_x = (img_width / 2) - (box_w / 2)
-    center_y = (img_height / 2) - (box_h / 2)
-    
-    return [{
-        "id": str(uuid.uuid4()),
-        "type": "box",
-        "x": int(center_x),
-        "y": int(center_y),
-        "width": box_w,
-        "height": box_h,
-        "label": "Mock Center",
-        "color": "#FF0000" # Red for visibility
-    }]
-
 def create_thumbnail(image_data: bytes, max_size: tuple = (150, 150)) -> str:
     img = Image.open(io.BytesIO(image_data))
     if img.mode == 'RGBA':
@@ -667,6 +680,75 @@ async def login(data: LoginPayload):
 @app.get("/")
 async def root():
     return {"message": "GeoNLI API is running", "version": "1.0.0"}
+
+@app.post("/eval")
+async def eval_endpoint(payload: EvalRequest):
+    """
+    Processes an evaluation request, downloads the input image, and returns
+    basic info with placeholders for query results. Image is downloaded to a
+    temporary file; the base64 is also returned for convenience.
+    """
+    try:
+        image_url = payload.input_image.image_url
+        image_id = payload.input_image.image_id
+
+        # Download image
+        resp = requests.get(image_url, timeout=30)
+        if resp.status_code != 200:
+            raise HTTPException(status_code=400, detail=f"Failed to download image: {resp.status_code}")
+
+        image_bytes = resp.content
+
+        img_w = payload.input_image.metadata.width
+        img_h = payload.input_image.metadata.height
+        
+        
+        
+        caption_result = {
+            "instruction": payload.queries.caption_query.instruction,
+            "response": "Text-based description placeholder.",
+        }
+
+        grounding_result = {
+            "instruction": payload.queries.grounding_query.instruction,
+            "response": []
+        }
+
+        attribute_result = {
+            "binary": {
+                "instruction": payload.queries.attribute_query.binary.instruction,
+                "response": "Unknown"
+            },
+            "numeric": {
+                "instruction": payload.queries.attribute_query.numeric.instruction,
+                "response": None
+            },
+            "semantic": {
+                "instruction": payload.queries.attribute_query.semantic.instruction,
+                "response": "Not implemented"
+            }
+        }
+
+        # Return combined response
+        return JSONResponse(
+            content={
+                "image": {
+                    "image_id": image_id,
+                    "dimensions": {"width": img_w, "height": img_h},
+                    "spatial_resolution_m": payload.input_image.metadata.spatial_resolution_m,
+                },
+                "queries": {
+                    "caption_query": caption_result,
+                    "grounding_query": grounding_result,
+                    "attribute_query": attribute_result
+                }
+            }
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] /eval failed: {e}", flush=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/upload")
 async def upload_image(
@@ -1055,6 +1137,9 @@ async def delete_session(session_id: str, user_id: str = Depends(get_current_use
         await db.images.delete_one({"sessionId": session_id})
         return {"success": True, "message": "Session deleted"}
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
+
+## EVAL MODE 
+
 
 if __name__ == "__main__":
     import uvicorn
