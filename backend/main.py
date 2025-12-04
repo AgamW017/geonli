@@ -39,7 +39,7 @@ app = FastAPI(title="GeoNLI API", version="1.0.0")
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000", "https://geonli-chat-t99.web.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
