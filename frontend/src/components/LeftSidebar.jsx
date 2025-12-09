@@ -6,14 +6,43 @@ import { useAuth } from '../contexts/AuthContext';
 const LeftSidebar = forwardRef(({ isOpen, onToggleSidebar, onNewChat, onLoadSession, onShowLogin }, ref) => {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const sessionRefs = useRef({});
   const prevPositions = useRef({});
   const isAnimating = useRef(false);
+  const optionsPopoverRef = useRef(null);
   const { user, logout } = useAuth();
 
   useEffect(() => {
     loadSessions();
   }, []);
+
+  // Close any open menus/modals on outside click or Escape
+  useEffect(() => {
+    const onGlobalClick = (e) => {
+      // If click happens inside the options popover, do not close
+      if (optionsPopoverRef.current && optionsPopoverRef.current.contains(e.target)) {
+        return;
+      }
+      // Close menu on outside click
+      if (openMenuId !== null) setOpenMenuId(null);
+      // Do not auto-close confirm dialog here; backdrop handles its close
+    };
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (openMenuId !== null) setOpenMenuId(null);
+        if (confirmDeleteId !== null) setConfirmDeleteId(null);
+      }
+    };
+    // Use bubble phase so inner handlers can run first
+    window.addEventListener('mousedown', onGlobalClick, false);
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => {
+      window.removeEventListener('mousedown', onGlobalClick, false);
+      window.removeEventListener('keydown', onKeyDown, true);
+    };
+  }, [openMenuId, confirmDeleteId]);
 
   const loadSessions = async () => {
     setLoading(true);
@@ -96,6 +125,24 @@ const LeftSidebar = forwardRef(({ isOpen, onToggleSidebar, onNewChat, onLoadSess
       onLoadSession(session);
     }
   };
+
+  const handleDeleteSession = async (sessionId) => {
+    // Optimistic remove
+    setSessions(prev => prev.filter(s => s.sessionId !== sessionId));
+    setOpenMenuId(null);
+    setConfirmDeleteId(null);
+    try {
+      await api.deleteSession(sessionId);
+      // After successful delete, go to New Chat like logout flow
+      if (typeof onNewChat === 'function') {
+        onNewChat();
+      }
+    } catch (err) {
+      // Revert if failed: reload list for consistency
+      console.error('Failed to delete session:', err);
+      await loadSessions();
+    }
+  };
   return (
     <aside 
       className={`flex flex-col h-full bg-light-panel dark:bg-dark-panel border-r border-light-border dark:border-dark-border transition-all duration-300 ease-in-out overflow-x-hidden
@@ -151,12 +198,15 @@ const LeftSidebar = forwardRef(({ isOpen, onToggleSidebar, onNewChat, onLoadSess
             ) : (
               <div className="space-y-2">
                 {sessions.map((session) => (
-                  <button
+                  <div
                     key={session.sessionId}
                     ref={el => sessionRefs.current[session.sessionId] = el}
-                    onClick={() => handleSessionClick(session)}
-                    className="w-full p-2 rounded-lg bg-light-bg dark:bg-dark-bg hover:bg-light-border dark:hover:bg-dark-border transition-colors duration-200 text-left group"
+                    className="relative w-full"
                   >
+                    <button
+                      onClick={() => handleSessionClick(session)}
+                      className="w-full p-2 rounded-lg bg-light-bg dark:bg-dark-bg hover:bg-light-border dark:hover:bg-dark-border transition-colors duration-200 text-left group"
+                    >
                     <div className="flex items-center gap-3">
                       {/* Image Thumbnail */}
                       {session.thumbnail ? (
@@ -186,14 +236,69 @@ const LeftSidebar = forwardRef(({ isOpen, onToggleSidebar, onNewChat, onLoadSess
                           })}
                         </p>
                       </div>
+                      {/* Kebab menu trigger */}
+                      <div className="ml-auto">
+                        <button
+                          title="Session options"
+                          onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === session.sessionId ? null : session.sessionId); }}
+                          className="p-2 rounded hover:bg-light-border dark:hover:bg-dark-border text-light-text dark:text-dark-text"
+                        >
+                          {/* Three dots */}
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                            <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zm6 0a2 2 0 11-4 0 2 2 0 014 0zm6 0a2 2 0 11-4 0 2 2 0 014 0z" />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
-                  </button>
+                    </button>
+                    {/* Options popover */}
+                    {openMenuId === session.sessionId && (
+                      <div
+                        ref={optionsPopoverRef}
+                        className="absolute right-2 top-2 z-10 bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-md shadow-lg"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          className="px-3 py-2 w-32 text-left text-red-600 hover:text-black dark:hover:text-gray-300 rounded-md"
+                          onClick={() => setConfirmDeleteId(session.sessionId)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             )}
           </div>
         </div>
       </div>
+      {/* Confirmation Modal */}
+      {confirmDeleteId && (
+        <div className="fixed inset-0 z-20 flex items-center justify-center">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/40" onClick={() => setConfirmDeleteId(null)} />
+          {/* Dialog */}
+          <div className="relative z-30 w-80 rounded-lg bg-light-panel dark:bg-dark-panel border border-light-border dark:border-dark-border p-4 shadow-xl">
+            <h4 className="text-sm font-semibold text-light-text dark:text-dark-text mb-2">Delete session?</h4>
+            <p className="text-sm text-light-text-dim dark:text-dark-text-dim mb-4">This action is permanent and cannot be undone.</p>
+            <div className="flex justify-end gap-2">
+              <button
+                className="px-3 py-2 rounded-md bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text hover:bg-light-border dark:hover:bg-dark-border"
+                onClick={() => setConfirmDeleteId(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-3 py-2 rounded-md bg-red-600 text-white hover:bg-red-700"
+                onClick={() => handleDeleteSession(confirmDeleteId)}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Footer: Auth controls at bottom */}
       <div className={`px-4 py-3 border-t border-light-border dark:border-dark-border flex-shrink-0`}
            style={{ marginTop: 'auto' }}>

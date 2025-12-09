@@ -10,7 +10,7 @@ export function ThemeProvider({ children }) {
     } catch (e) {
         console.error('Retrieving theme failed', e);
     }
-    return 'light';
+    return 'dark';
   });
 
   useEffect(() => {
